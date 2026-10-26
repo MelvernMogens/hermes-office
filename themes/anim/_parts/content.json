@@ -1,0 +1,39 @@
+{
+ "panel": {
+  "frames": [
+   "anim/content_panel_0.png",
+   "anim/content_panel_1.png",
+   "anim/content_panel_2.png",
+   "anim/content_panel_3.png",
+   "anim/content_panel_4.png",
+   "anim/content_panel_5.png",
+   "anim/content_panel_6.png",
+   "anim/content_panel_7.png",
+   "anim/content_panel_8.png",
+   "anim/content_panel_9.png",
+   "anim/content_panel_10.png",
+   "anim/content_panel_11.png"
+  ],
+  "fps": 6,
+  "pingpong": false
+ },
+ "eom": {
+  "frames": [
+   "anim/content_eom_0.png",
+   "anim/content_eom_1.png",
+   "anim/content_eom_2.png",
+   "anim/content_eom_3.png",
+   "anim/content_eom_4.png",
+   "anim/content_eom_5.png",
+   "anim/content_eom_6.png",
+   "anim/content_eom_7.png",
+   "anim/content_eom_8.png",
+   "anim/content_eom_9.png",
+   "anim/content_eom_10.png",
+   "anim/content_eom_11.png"
+  ],
+  "fps": 5,
+  "idleHoldMs": 300
+ },
+ "note": "storyboard: 9 cards sketch->ink one at a time in reading order, each stage only advances, reaches 9/9 filled and holds, then a fade/wipe frame before the reset to blank; portrait v2b: BIG ARM (contrasting red-orange sleeve) enters from off-frame bottom-left and rises >=12 cells to finish ABOVE the head, holding up a bright yellow notebook/phone prop (attached to the hand every frame), head turns right then a deep left turn + body lean, pencil stays tucked behind the ear, nod, blink, mouth opens on the idea beat (no relight: physical motion only)"
+}

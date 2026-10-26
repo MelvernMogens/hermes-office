@@ -1,0 +1,221 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>hermes-office v5.2 rev3 — floor themes</title>
+<!-- Preview only. Serve plugin root:  cd <repo root> && python3 -m http.server 8765
+     http://localhost:8765/themes/preview.html            (grid, ?scale=.5&cols=3)
+     http://localhost:8765/themes/preview.html?room=coder&scale=1   (single room)
+     ?ref=1 -> render the v5 ref furniture instead (A/B)                                -->
+<style>
+ html,body{margin:0;background:#0b0d11;color:#cbd5e1;font:12px ui-monospace,Menlo,monospace}
+ #grid{display:grid;gap:14px;padding:14px;grid-template-columns:repeat(var(--cols),max-content)}
+ .cell{display:flex;flex-direction:column;gap:5px}
+ .cap{display:flex;align-items:center;gap:8px;height:16px;white-space:nowrap}
+ .cap b{color:#e5e7eb} .cap i{display:inline-block;width:10px;height:10px;border-radius:2px} .cap span{color:#6b7280}
+ .vp{position:relative;overflow:hidden;border:1px solid #1f2430}
+ .room{position:absolute;left:0;top:0;width:1280px;height:1024px;transform-origin:top left;overflow:hidden}
+ .room img{position:absolute;display:block;image-rendering:pixelated}
+ .room img.smooth{image-rendering:auto}
+ .room .svg{position:absolute} .room .svg svg{display:block;overflow:visible}
+ .wall{position:absolute;left:0;top:0;width:1280px;height:240px;background-size:128px 240px;image-rendering:pixelated}
+ .trim{position:absolute;left:0;top:240px;width:1280px;height:10px;background-size:64px 10px;image-rendering:pixelated}
+ .glow{position:absolute;left:0;top:240px;width:1280px;height:2px;opacity:.85}
+ .floor{position:absolute;left:0;top:250px;width:1280px;height:774px;background-size:200px 200px;image-rendering:pixelated}
+ .evl{position:absolute;left:81px;top:111px;width:10px;height:8px;background:#ef4444;z-index:6}
+ .lbl{position:absolute;transform:translate(-50%,-50%);white-space:nowrap;font:bold 12px ui-monospace,Menlo,monospace;color:#fff;-webkit-text-stroke:3px #000;paint-order:stroke fill;z-index:1700}
+</style></head><body><div id="grid"></div>
+<script type="module">
+import { SPRITES as S } from '../test/sprites.gen.js';
+const q = new URLSearchParams(location.search);
+const TH = await (await fetch('themes.json?' + Date.now())).json();
+const REF = q.get('ref') === '1';
+const toData = async (u) => { const b = await (await fetch(u)).blob(); return await new Promise((r) => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(b); }); };
+for (const t of Object.values(TH.themes)) t.floorTile = await toData(t.floorTile);   // svg-in-css cannot load external urls
+const only = q.get('room'); const scale = +(q.get('scale') || .3);
+const ids = only ? [only] : Object.keys(TH.themes);
+document.getElementById('grid').style.setProperty('--cols', only ? 1 : (q.get('cols') || 3));
+
+const img = (src, l, t, w, h, z, cls, extra) => `<img ${cls ? `class="${cls}"` : ''} src="${src}" style="left:${l}px;top:${t}px;width:${w}px;height:${h}px;z-index:${z};${extra || ''}">`;
+const spr = (src, cx, cy, w, h, z, cls) => img(src, cx - w / 2, cy - h / 2, w, h, z, cls);
+const box = (x, y, w, h, z, svg) => `<div class="svg" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px;z-index:${z}">${svg}</div>`;
+
+function floorPattern(t) {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" style="image-rendering:pixelated"><image href="${t}" x="0" y="0" width="100" height="100"/>`
+   + `<g transform="rotate(90 150 50)"><image href="${t}" x="100" y="0" width="100" height="100"/></g>`
+   + `<g transform="rotate(90 50 150)"><image href="${t}" x="0" y="100" width="100" height="100"/></g>`
+   + `<image href="${t}" x="100" y="100" width="100" height="100"/>`
+   + `<rect x="100" y="0" width="100" height="100" fill="#000" fill-opacity="0.153"/><rect x="0" y="100" width="100" height="100" fill="#000" fill-opacity="0.153"/></svg>`;
+  return `url('data:image/svg+xml;base64,${btoa(svg)}')`;
+}
+function eom(ch, name) {
+  const g = '#ffd700', photo = ch.eomPortrait || S.employeeOfMonth;
+  return `<svg width="125" height="160" viewBox="0 0 125 160"><rect x="5" y="5" width="120" height="155" rx="4" fill="#000" fill-opacity=".3"/>
+  <rect x="1.5" y="1.5" width="117" height="152" rx="4" fill="${ch.eomCard}" stroke="${ch.eomFrame}" stroke-width="3"/>
+  <rect x="6" y="6" width="108" height="28" fill="${ch.whiteboardHeader}" stroke="#000" stroke-opacity=".4"/>
+  <text x="60" y="18" text-anchor="middle" font-family="Arial Black,Arial,sans-serif" font-weight="bold" font-size="12" fill="${g}">EMPLOYEE</text>
+  <text x="60" y="29" text-anchor="middle" font-family="Arial Black,Arial,sans-serif" font-weight="bold" font-size="8" fill="#fff">OF THE MONTH</text>
+  <rect x="15" y="42" width="90" height="90" fill="#111" stroke="${ch.eomFrame}" stroke-width="3"/>
+  <image href="${photo}" x="18" y="45" width="84" height="84" style="image-rendering:pixelated"/>
+  <rect x="15" y="138" width="90" height="12" fill="${ch.eomFrame}"/>
+  <text x="60" y="147.5" text-anchor="middle" font-family="Arial Black,Arial,sans-serif" font-weight="bold" font-size="10" fill="#111">${name}</text></svg>`;
+}
+function clock(ch) {
+  const hand = (deg, len) => { const r = deg * Math.PI / 180; return [44 + Math.sin(r) * len, 44 - Math.cos(r) * len]; };
+  let d = ''; for (let i = 0; i < 12; i++) { const p = hand(i * 30, 32); d += `<circle cx="${p[0]}" cy="${p[1]}" r="2" fill="${ch.clockHand}"/>`; }
+  const hp = hand(10 * 30 + 9, 20), mp = hand(108, 30), sp = hand(200, 35);
+  return `<svg width="88" height="88" viewBox="0 0 88 88"><circle cx="44" cy="44" r="44" fill="#000"/><circle cx="44" cy="44" r="40" fill="${ch.clockFace}" stroke="${ch.clockRim}" stroke-width="4"/>${d}
+  <line x1="44" y1="44" x2="${hp[0]}" y2="${hp[1]}" stroke="${ch.clockHand}" stroke-width="4" stroke-linecap="round"/><line x1="44" y1="44" x2="${mp[0]}" y2="${mp[1]}" stroke="${ch.clockHand}" stroke-width="3" stroke-linecap="round"/>
+  <line x1="44" y1="44" x2="${sp[0]}" y2="${sp[1]}" stroke="${ch.clockSecond}" stroke-width="1"/><circle cx="44" cy="44" r="3" fill="${ch.clockSecond}"/></svg>`;
+}
+function wb(ch, accent) {
+  const items = ['Map the gateway module', 'Write harness cases', 'Run integration tests', 'Validate schema'];
+  const rows = items.map((it, i) => `<text x="22" y="${56 + i * 24}" font-family="ui-monospace,Menlo,monospace" font-size="11" fill="${i ? ch.whiteboardDim : accent}">${i ? '\u25CB' : '\u25B6'}</text><text x="38" y="${56 + i * 24}" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="${i ? 'normal' : 'bold'}" fill="${i ? ch.whiteboardDim : ch.whiteboardText}">${it}</text>`).join('');
+  return `<svg width="334" height="213" viewBox="0 0 334 213"><rect x="4" y="4" width="330" height="205" rx="8" fill="#000" fill-opacity=".3"/>
+  <rect x="2" y="2" width="326" height="201" rx="8" fill="${ch.whiteboardBg}" stroke="${ch.whiteboardBorder}" stroke-width="4"/><rect x="6" y="6" width="318" height="193" rx="4" fill="none" stroke="${accent}" stroke-opacity=".25" stroke-width="2"/>
+  <rect x="10" y="10" width="310" height="24" rx="3" fill="${ch.whiteboardHeader}"/><text x="165" y="26" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-weight="bold" font-size="12" fill="${ch.whiteboardText}">\uD83D\uDCCB TODO</text>${rows}
+  <rect x="115" y="203" width="100" height="8" fill="${ch.whiteboardBorder}"/><rect x="125" y="197" width="18" height="12" rx="2" fill="#ef4444"/><rect x="150" y="197" width="18" height="12" rx="2" fill="#22c55e"/><rect x="175" y="197" width="18" height="12" rx="2" fill="#3b82f6"/></svg>`;
+}
+function safety(s) {
+  return `<svg width="144" height="104" viewBox="0 0 144 104"><rect x="4" y="4" width="140" height="100" rx="6" fill="#000" fill-opacity=".3"/>
+  <rect x="1.5" y="1.5" width="137" height="97" rx="6" fill="${s.bg}" stroke="${s.border}" stroke-width="3"/><rect x="6" y="6" width="128" height="88" rx="4" fill="none" stroke="#fff" stroke-opacity=".5" stroke-width="2"/>
+  <rect x="10" y="10" width="120" height="20" fill="${s.header}"/><text x="70" y="24.5" text-anchor="middle" font-family="Arial Black,Arial,sans-serif" font-weight="bold" font-size="11" fill="#fff">\u26A0\uFE0F SAFETY</text>
+  <text x="70" y="62" text-anchor="middle" font-family="Arial Black,Arial,sans-serif" font-weight="bold" font-size="28" fill="#fff">7</text>
+  <text x="70" y="75" text-anchor="middle" font-family="Courier New,monospace" font-weight="bold" font-size="9" fill="${s.text}">MESSAGES</text>
+  <text x="70" y="87" text-anchor="middle" font-family="Courier New,monospace" font-weight="bold" font-size="9" fill="${s.text}">THIS SESSION</text></svg>`;
+}
+function trash() {
+  let m = ''; for (let i = 0; i <= 8; i++) { const t = i / 8; m += `<line x1="${t * 50}" y1="4" x2="${3 + t * 44}" y2="52" stroke="#4a4a4a"/>`; }
+  return `<svg width="50" height="58" viewBox="0 0 50 58">${m}<line x1="0" y1="4" x2="3" y2="52" stroke="#6a6a6a" stroke-width="2"/><line x1="50" y1="4" x2="47" y2="52" stroke="#6a6a6a" stroke-width="2"/><ellipse cx="25" cy="3" rx="25" ry="4" fill="#3a3a3a" stroke="#6a6a6a" stroke-width="1.5"/></svg>`;
+}
+const capsule = (fill, stroke) => `<svg width="48" height="80" viewBox="0 0 48 80"><rect x="2" y="2" width="44" height="76" rx="22" ry="22" fill="${fill}" stroke="${stroke}" stroke-width="4"/></svg>`;
+function arms(sy, ey, stroke) {
+  const arm = (s) => `M${22 * s} ${sy}C${42 * s} ${sy + 10} ${37 * s} ${ey - 4} ${12 * s} ${ey}`;
+  const hand = (s) => `<rect x="${12 * s - 5}" y="${ey - 7}" width="10" height="14" rx="5" fill="#1f2937" stroke="${stroke}" stroke-width="2"/>`;
+  return `<svg width="100" height="${ey - sy + 30}" viewBox="-50 ${sy - 12} 100 ${ey - sy + 30}" overflow="visible"><path d="${arm(1)}" fill="none" stroke="${stroke}" stroke-width="4" stroke-linecap="round"/>${hand(1)}<path d="${arm(-1)}" fill="none" stroke="${stroke}" stroke-width="4" stroke-linecap="round"/>${hand(-1)}</svg>`;
+}
+const REF_ITEMS = { mug: ['coffeeMug', 50, 40, 19.5, 18.5], stapler: ['stapler', 50, 43, 24.3, 13.3], lamp: ['deskLamp', 50, 29, 44.1, 44.8],
+  penholder: ['penHolder', 54, 38, 22.7, 28.2], '8ball': ['magic8Ball', 54, 42, 20.1, 20.4], rubiks: ['rubiksCube', 52, 42, 19.2, 20.5],
+  duck: ['rubberDuck', 52, 42, 15, 15.2], thermos: ['thermos', 52, 40, 10.1, 26.6] };
+const SEQ = ['lamp', 'mug', '8ball', 'stapler', 'penholder', 'thermos', 'rubiks', 'duck'];
+const SEATED = [0, 2, 5, 7];   // sample occupied desks
+const NAMES = ['alpha', 'bravo', 'charlie', 'delta', 'echo'];
+
+function room(id) {
+  const t = TH.themes[id], ch = t.chrome, P = t.props, sl = TH.slots, o = [];
+  const R = (k, fallback) => (REF || !t[k]) ? fallback : t[k];
+  const sm = (k) => (REF || !t[k]) ? 'smooth' : '';
+  const desk = R('desk', S.desk), chair = R('chair', S.chair), mon = R('monitor', S.monitor), kb = R('keyboard', S.keyboard);
+  o.push(`<div class="wall" style="background-color:${t.wall};${!REF && t.wallTexture ? `background-image:url('${t.wallTexture}')` : ''}"></div>`);
+  o.push(`<div class="trim" style="background-color:${t.wallTrim};${!REF && t.wallTrimTexture ? `background-image:url('${t.wallTrimTexture}')` : ''}"></div><div class="glow" style="background:${ch.trimGlow}"></div>`);
+  o.push(`<div class="floor" style="background-color:${t.floor};background-image:${floorPattern(t.floorTile)}"></div>`);
+  o.push(P.BossRug ? img(P.BossRug, 640 - 186, 940 - 90, 372, 180, 1) : img(S.bossRug, 640 - 186.6, 940 - 89.7, 373.2, 179.4, 1, 'smooth', `filter:${t.rugFilter}`));
+  o.push(box(184, 50, 125, 160, 2, eom(ch, id === 'default' ? 'WARLORD' : id.toUpperCase())));
+  o.push(P.CityWindow ? img(P.CityWindow, sl.CityWindow.x, sl.CityWindow.y, 200, 160, 2) : '');
+  o.push(box(581 - 44, 80 - 44, 88, 88, 2, clock(ch)));
+  o.push(spr(S.wallOutlet, 581, 209, 22.3, 31.1, 2, 'smooth'));
+  o.push(box(641, 11, 334, 213, 2, wb(ch, t.accent)));
+  o.push(box(1120, 40, 144, 104, 2, safety(ch.safetySign)));
+  o.push(P.WaterCooler ? img(P.WaterCooler, 1010 - 20, 260.4 - 124, 40, 124, 3) : spr(S.waterCooler, 1010, 200, 36.4, 120.8, 3, 'smooth'));
+  o.push(P.CoffeeMachine ? spr(P.CoffeeMachine, 1081, 191, 60, 66, 3) : spr(S.coffeeMachine, 1081, 191, 59.4, 65.2, 3, 'smooth'));
+  o.push(img(desk, 50 - 42.2, 945, 84.3, 73.9, 3, sm('desk')));
+  o.push(P.Printer ? img(P.Printer, 50 - 32, 960 - 47.8, 64, 60, 3) : img(S.printer, 50 - 32, 960 - 47.8, 63.9, 59.7, 3, 'smooth'));
+  o.push(P.Plant ? spr(P.Plant, 118, 970, 48, 62, 3) : spr(S.plant, 118, 970, 47, 62.2, 3, 'smooth'));
+  o.push(spr(R('elevatorFrame', S.elevatorFrame), 86, 178, 154.4, 144.3, 3, sm('elevatorFrame')));
+  const door = R('elevatorDoor', S.elevatorDoor), dcls = sm('elevatorDoor');
+  o.push(img(door, 36, 178 + 9 - 61.75, 50.8, 123.5, 5, dcls) + img(door, 136 - 50.8, 178 + 9 - 61.75, 50.8, 123.5, 5, dcls, 'transform:scaleX(-1)') + '<div class="evl"></div>');
+  const acc = {}; (t.deskItems || []).forEach((d) => d.desks.forEach((i) => { acc[i] = d.file; }));
+  const pal = (!REF && t.agentPalette) || ['#3b82f6', '#22c55e', '#a855f7', '#f97316', '#ec4899', '#14b8a6'];
+  const stroke = (!REF && t.agentStroke) || '#fff';
+  const A = !REF && t.agentAccessory, BA = !REF && t.bossAccessory;
+  for (let i = 0; i < 8; i++) {
+    const x = 256 + (i % 4) * 256, y = 408 + Math.floor(i / 4) * 192;
+    o.push(spr(chair, x, y + 30, 63.3, 100.8, 10 + y + 20, sm('chair')));
+    o.push(img(desk, x - 70.25, y + 30, 140.5, 73.9, 1500, sm('desk')));
+    o.push(spr(kb, x, y + 42, 52.6, 14, 1500, sm('keyboard')));
+    o.push(spr(mon, x - 45, y + 27, 63, 51.7, 1503, sm('monitor')));
+    if (acc[i]) o.push(spr(acc[i], x + TH.deskItem.dx, y + TH.deskItem.dy, 24, 24, 1503));
+    else { const it = REF_ITEMS[SEQ[i]]; if (S[it[0]]) o.push(spr(S[it[0]], x + it[1], y + it[2], it[3], it[4], 1503, 'smooth')); }
+    const si = SEATED.indexOf(i);
+    if (si >= 0) {  // seated agent: pos = (x, y+24) -> capsule centre (x, y+8); same layering as plugin v5
+      const px = x, py = y + 24, z = 10 + py;
+      o.push(box(px - 24, py - 56, 48, 80, z, capsule(pal[si % pal.length], stroke)));
+      o.push(box(px - 50, py - 28, 100, 62, 1501, arms(-16, 16, stroke)));
+      if (A) o.push(img(A.file, px + A.x, py - 16 + A.y, A.w, A.h, 1502));
+      else { o.push(spr(S.sunglasses, px, py - 37, 44.7, 19.4, z + 1, 'smooth')); o.push(spr(S.headset, px, py - 38, 85.5, 73.6, 1502, 'smooth')); }
+      o.push(`<span class="lbl" style="left:${px}px;top:${py - 70}px">${NAMES[si]}</span>`);
+    }
+  }
+  // one agent waiting in front of the elevator (arrival spawn area)
+  { const px = 196, py = 300, z = 10 + py;
+    o.push(box(px - 24, py - 56, 48, 80, z, capsule(pal[4 % pal.length], stroke)));
+    o.push(A ? img(A.file, px + A.x, py - 16 + A.y, A.w, A.h, z + 1) : spr(S.sunglasses, px, py - 37, 44.7, 19.4, z + 1, 'smooth'));
+    o.push(`<span class="lbl" style="left:${px}px;top:${py - 70}px">${NAMES[4]}</span>`); }
+  // boss (plugin v5 layering)
+  const bx = 640, by = 900;
+  o.push(spr(chair, bx + 5, by + 30, 63.3, 100.8, 1600, sm('chair')));
+  o.push(box(bx - 24, by + 6 - 40, 48, 80, 1601, capsule((!REF && t.bossBody) || '#1f2937', stroke)));
+  o.push(BA ? img(BA.file, bx + BA.x, by + 6 + BA.y, BA.w, BA.h, 1601) : img(S.sunglasses, bx - 22.35, by + 6 - 40 + 11.3, 44.7, 19.4, 1601, 'smooth', 'filter:brightness(0)'));
+  o.push(img(desk, bx - 70.25, by + 30, 140.5, 73.9, 1602, sm('desk')));
+  o.push(spr(kb, bx, by + 42, 52.6, 14, 1602, sm('keyboard')));
+  o.push(box(bx - 50, by + 6 - 12, 100, 62, 1603, arms(0, 32, stroke)));
+  if (!BA) o.push(spr(S.headset, bx, by + 6 - 20, 85.5, 73.6, 1604, 'smooth'));
+  o.push(spr(mon, bx - 45, by + 27, 63, 51.7, 1605, sm('monitor')));
+  o.push(spr(S.phone, bx + 48, by + 44, 30, 16.3, 1605, 'smooth'));
+  o.push(`<span class="lbl" style="left:${bx}px;top:${by - 63}px">${id === 'default' ? 'WARLORD' : id}</span>`);
+  o.push(box(bx + 110 - 25, by + 65 - 29, 50, 58, 1606, trash()));
+  if (CLEANER) o.push(cleanerLayer(t));
+  return o.join('');
+}
+// ---- v5.6 cleaner NPC (?cleaner=1): seat candidate top-right + cleaner cleaning in the x=384 lane + walking in the x=896 lane.
+// Sprites = 40x36 cells shown at 3 css/cell (120x108), anchor bottom-centre = feet point, z = 10 + footY (same as agents).
+const CLEANER = q.get('cleaner') === '1';
+const clOf = (t) => t.cleaner || TH.cleanerRef;
+const clImg = (src, fx, fy, flip, extra) => img(src, fx - 60, fy - 108, 120, 108, 10 + fy, '', (flip ? 'transform:scaleX(-1);' : '') + (extra || ''));
+function cleanerLayer(t) {
+  const c = clOf(t), f = +(q.get('frame') || 0), o = [];
+  const seat = [1196, 352];   // candidate: right of desk col 4, under safety sign, clear of cooler (1010) / coffee (1081) bottoms
+  o.push(clImg(c.seat.sprite, seat[0], seat[1]));
+  if (q.get('pose') === 'sit') o.push(clImg(c.sit[f % c.sit.length], seat[0], seat[1]));
+  else {
+    o.push(clImg(c.clean[f % c.clean.length], 384, 540));
+    o.push(clImg(c.walk[f % c.walk.length], 896, 780, true));
+  }
+  return o.join('');
+}
+// ---- ?cleaners=1 : sheet of all 12 cleaners (11 themes + ref) at in-game scale next to an agent capsule
+function cleanerSheet() {
+  const ids12 = [...Object.keys(TH.themes), '_ref'];
+  const cells = (id) => {
+    const t = TH.themes[id], c = t ? t.cleaner : TH.cleanerRef, fl = t ? t.floor : '#2a2a2a', o = [];
+    const tile = (inner, lbl) => `<div class="clt" style="background:${fl}">${inner}<span>${lbl}</span></div>`;
+    const im = (s) => `<img src="${s}">`;
+    const cap = `<div class="svg" style="left:36px;top:6px">${capsule((t && t.agentPalette && t.agentPalette[0]) || '#3b82f6', (t && t.agentStroke) || '#fff')}</div>`
+      + `<div style="position:absolute;left:45px;top:86px;width:6px;height:16px;background:#e5e7eb"></div><div style="position:absolute;left:69px;top:86px;width:6px;height:16px;background:#e5e7eb"></div>`;
+    o.push(tile(cap, 'agent'));
+    c.walk.forEach((s, i) => o.push(tile(im(s), 'walk' + i)));
+    c.clean.forEach((s, i) => o.push(tile(im(s), 'clean' + i)));
+    o.push(tile(im(c.seat.sprite) + im(c.sit[0]), 'seat+sit'));
+    if (c.sit[1]) o.push(tile(im(c.seat.sprite) + im(c.sit[1]), 'sit1'));
+    o.push(tile(im(c.seat.sprite), 'seat'));
+    return `<div class="clrow"><div class="clh"><b>${id === '_ref' ? 'ref (fallback)' : id}</b><i>${c.name}</i><em>${c.move} · fx ${c.fx}</em></div>${o.join('')}</div>`;
+  };
+  return ids12.map(cells).join('');
+}
+const g = document.getElementById('grid');
+if (q.get('cleaners') === '1') {
+  const st = document.createElement('style');
+  st.textContent = `.clrow{display:flex;gap:4px;align-items:flex-end}.clh{width:120px;display:flex;flex-direction:column;gap:2px;font-size:11px}.clh i{color:#9ca3af}.clh em{color:#6b7280;font-style:normal}
+  .clt{position:relative;width:120px;height:108px;outline:1px solid #0b0d11}.clt img{position:absolute;left:0;top:0;width:120px;height:108px;image-rendering:pixelated}
+  .clt span{position:absolute;right:3px;top:2px;font-size:9px;color:#94a3b8;opacity:.8}.clt .svg{position:absolute}`;
+  document.head.appendChild(st);
+  g.style.setProperty('--cols', 1); g.style.gap = '6px'; g.innerHTML = cleanerSheet();
+  ids.length = 0;
+}
+for (const id of ids) {
+  const t = TH.themes[id];
+  const cell = document.createElement('div'); cell.className = 'cell';
+  cell.innerHTML = `<div class="cap"><i style="background:${t.accent}"></i><b>${id}</b><span>${t.label} · wall ${t.wall} · accent ${t.accent}</span></div>
+    <div class="vp" style="width:${1280 * scale}px;height:${1024 * scale}px"><div class="room" style="transform:scale(${scale})">${room(id)}</div></div>`;
+  g.appendChild(cell);
+}
+await Promise.all([...document.images].map((i) => i.decode().catch(() => null)));
+document.body.dataset.ready = '1';
+</script></body></html>

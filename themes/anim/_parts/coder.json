@@ -1,0 +1,35 @@
+{
+ "panel": {
+  "frames": [
+   "anim/coder_panel_0.png",
+   "anim/coder_panel_1.png",
+   "anim/coder_panel_2.png",
+   "anim/coder_panel_3.png",
+   "anim/coder_panel_4.png",
+   "anim/coder_panel_5.png",
+   "anim/coder_panel_6.png",
+   "anim/coder_panel_7.png",
+   "anim/coder_panel_8.png",
+   "anim/coder_panel_9.png"
+  ],
+  "fps": 6,
+  "pingpong": false
+ },
+ "eom": {
+  "frames": [
+   "anim/coder_eom_0.png",
+   "anim/coder_eom_1.png",
+   "anim/coder_eom_2.png",
+   "anim/coder_eom_3.png",
+   "anim/coder_eom_4.png",
+   "anim/coder_eom_5.png",
+   "anim/coder_eom_6.png",
+   "anim/coder_eom_7.png",
+   "anim/coder_eom_8.png",
+   "anim/coder_eom_9.png"
+  ],
+  "fps": 5,
+  "idleHoldMs": 300
+ },
+ "note": "terminal: code scrolls up (cyclic 10-line strip, seamless), cursor blink, CPU graph scrolls, build bar breathes 0->100->0, LED chase; portrait EOM v2: head bobs+turns right while RIGHT arm rises (elbow swings out) to push the glasses up the nose, then head bobs+turns left while LEFT arm rises with a mug to the mouth, blink"
+}

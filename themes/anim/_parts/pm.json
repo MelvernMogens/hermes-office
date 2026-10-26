@@ -1,0 +1,40 @@
+{
+ "panel": {
+  "frames": [
+   "anim/pm_panel_0.png",
+   "anim/pm_panel_1.png",
+   "anim/pm_panel_2.png",
+   "anim/pm_panel_3.png",
+   "anim/pm_panel_4.png",
+   "anim/pm_panel_5.png",
+   "anim/pm_panel_6.png",
+   "anim/pm_panel_7.png",
+   "anim/pm_panel_8.png",
+   "anim/pm_panel_9.png",
+   "anim/pm_panel_10.png",
+   "anim/pm_panel_11.png"
+  ],
+  "fps": 6,
+  "pingpong": false
+ },
+ "eom": {
+  "frames": [
+   "anim/pm_eom_0.png",
+   "anim/pm_eom_1.png",
+   "anim/pm_eom_2.png",
+   "anim/pm_eom_3.png",
+   "anim/pm_eom_4.png",
+   "anim/pm_eom_5.png",
+   "anim/pm_eom_6.png",
+   "anim/pm_eom_7.png",
+   "anim/pm_eom_8.png",
+   "anim/pm_eom_9.png",
+   "anim/pm_eom_10.png",
+   "anim/pm_eom_11.png",
+   "anim/pm_eom_12.png"
+  ],
+  "fps": 5,
+  "idleHoldMs": 300
+ },
+ "note": "kanban: 6 cards glide TODO->DOING->DONE over staggered 3-frame slides (smooth translate), progress bar grows, board resets each sprint; portrait: a bright teal-sleeved arm enters from off-frame bottom-right and lifts+tilts the clipboard up toward the viewer (headline motion, >=20 cell travel to above the shoulder), pen taps lines while the board is low, checks accumulate, the page flips to a fresh sheet while held at the peak, board lowers back; head turns to check the side then nods, blink"
+}

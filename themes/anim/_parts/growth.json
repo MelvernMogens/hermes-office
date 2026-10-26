@@ -1,0 +1,35 @@
+{
+ "panel": {
+  "frames": [
+   "anim/growth_panel_0.png",
+   "anim/growth_panel_1.png",
+   "anim/growth_panel_2.png",
+   "anim/growth_panel_3.png",
+   "anim/growth_panel_4.png",
+   "anim/growth_panel_5.png",
+   "anim/growth_panel_6.png",
+   "anim/growth_panel_7.png",
+   "anim/growth_panel_8.png",
+   "anim/growth_panel_9.png"
+  ],
+  "fps": 6,
+  "pingpong": false
+ },
+ "eom": {
+  "frames": [
+   "anim/growth_eom_0.png",
+   "anim/growth_eom_1.png",
+   "anim/growth_eom_2.png",
+   "anim/growth_eom_3.png",
+   "anim/growth_eom_4.png",
+   "anim/growth_eom_5.png",
+   "anim/growth_eom_6.png",
+   "anim/growth_eom_7.png",
+   "anim/growth_eom_8.png",
+   "anim/growth_eom_9.png"
+  ],
+  "fps": 6,
+  "idleHoldMs": 300
+ },
+ "note": "growth chart: bars grow + trend line + rocket sweep left->right as a reveal edge crosses (persistent polyline, fill-progress), counter counts up, resets each period; portrait: body leans forward as the megaphone rises to the mouth and shouts (mouth opens wide), then lowers back; a BIG bright thumbs-up hand/arm rises from off-frame at the bottom edge up beside the face and pumps (the headline motion), head nods, blink. No sparks/flicker."
+}

@@ -1,0 +1,510 @@
+{
+  "default": {
+    "idle": [
+      "Beep. Patrol route optimal.",
+      "Dust levels: unacceptable.",
+      "My visor sees everything.",
+      "Scanning floor... yuck.",
+      "Unit needs oil. And coffee.",
+      "Humans drop crumbs. Fact.",
+      "Error 404: clean floor.",
+      "Sensors detect crumb storm.",
+      "Roaming mode: smug.",
+      "Battery at 61%. Fine. FINE.",
+      "I dream of shiny tiles.",
+      "Sweep protocols engaged.",
+      "Must. Resist. Dust bunnies.",
+      "Floor status: mediocre."
+    ],
+    "cleaning": [
+      "Vacuuming at max suction!",
+      "Ingesting energon sludge.",
+      "This stain resists. Rude.",
+      "Sweeping sector seven.",
+      "Filth detected. Filth gone.",
+      "Compacting debris. Beep.",
+      "Polishing to mirror finish.",
+      "Dust bunnies: terminated.",
+      "Mopping with precision."
+    ],
+    "resting": [
+      "Charging. Do not disturb.",
+      "Docked. Dreaming of oil.",
+      "Recharging core... nap time.",
+      "Low power = low patience.",
+      "Zzz... voltage... zzz.",
+      "Plug in. Tune out."
+    ],
+    "to_agent": [
+      "You dropped crumbs, human.",
+      "Wipe your feet, agent.",
+      "Step aside. Sweeping here.",
+      "Nice shoes. Clean them.",
+      "You track dust everywhere.",
+      "Move. Mop in progress."
+    ]
+  },
+  "coder": {
+    "idle": [
+      "Just roaming, no commits.",
+      "Cache cleared, floors next.",
+      "Debugging dust in prod.",
+      "Floor.exe is running fine.",
+      "Sweeping is my side hustle.",
+      "Linting the hallway...",
+      "404: motivation not found.",
+      "RGB mode: janitor edition.",
+      "Deploying broom to prod.",
+      "Dust? I'll squash that bug.",
+      "Refactoring dirt since 9am.",
+      "Firmware update: mop v2.0."
+    ],
+    "cleaning": [
+      "Sweeping merge conflict.",
+      "Deleting dust from cache.",
+      "Pushing dirt to main branch.",
+      "Wiping bugs off the floor.",
+      "Commit: floor now clean.",
+      "Garbage collected. Literally.",
+      "Compiling a spotless floor.",
+      "Hotfix: coffee spill gone."
+    ],
+    "resting": [
+      "Charging pad best pad.",
+      "Nap mode: do not merge.",
+      "Sleeping on a charging pad.",
+      "Low battery, high vibes.",
+      "Zzz... compiling dreams...",
+      "Docked. Please hold my PR."
+    ],
+    "to_agent": [
+      "Your crumbs failed CI.",
+      "Drink spilled? Rollback time.",
+      "Agent, mind the wet floor.",
+      "Nice code. Messy desk though.",
+      "Reboot your tidiness, pal.",
+      "Standup? I'm sweeping."
+    ]
+  },
+  "research": {
+    "idle": [
+      "Ah, the scent of old pages.",
+      "Dust is the enemy of lore.",
+      "Patrolling the stacks...",
+      "Every book deserves care.",
+      "Shelving chaos, one sweep.",
+      "Chapter one: the dusty hall.",
+      "I dust, therefore I am.",
+      "Quiet please. And cleaner.",
+      "A tidy shelf, a tidy mind.",
+      "My feather duster is loyal.",
+      "Roaming aisle nine again.",
+      "So much dust. So little tea."
+    ],
+    "cleaning": [
+      "Dusting shelf B, gently.",
+      "This grime is a tragedy.",
+      "Sweeping between the lines.",
+      "Off with you, dusty fiend!",
+      "Polishing the atlases.",
+      "Dusting spines with care.",
+      "A clean book is a happy book.",
+      "Sweep, for knowledge's sake."
+    ],
+    "resting": [
+      "Tea time. Do disturb later.",
+      "Resting my duster arm.",
+      "Sipping tea, chapter twelve.",
+      "Ah, a chair and warm tea.",
+      "Reading beats sweeping, some days.",
+      "Earl Grey heals all."
+    ],
+    "to_agent": [
+      "Please mind the rare books.",
+      "No crumbs in the library!",
+      "Wash hands before pages, dear.",
+      "Quiet steps, quieter crumbs.",
+      "Return your books dusted.",
+      "Agent, the archive thanks you."
+    ]
+  },
+  "designer": {
+    "idle": [
+      "Every floor is a canvas.",
+      "Sketching sweep patterns...",
+      "This hallway needs contrast.",
+      "Monochrome dust? Boring.",
+      "I sweep with pizzazz.",
+      "Rollicking through the halls.",
+      "Palette of the day: clean.",
+      "Finding composition in clutter.",
+      "Dust is my rough draft.",
+      "Mopping as performance art.",
+      "This corner lacks balance.",
+      "White space, but on floors."
+    ],
+    "cleaning": [
+      "Rolling a fresh coat of clean.",
+      "Streak-free. Chef's kiss.",
+      "Blending grime away.",
+      "Prime the floor, then sweep.",
+      "Erasing smudges with flair.",
+      "Gradient: dirty to spotless.",
+      "This stain? Bold. Gone.",
+      "Layering shine on tile."
+    ],
+    "resting": [
+      "Folding chair, unfolding dreams.",
+      "Break time. Still fabulous.",
+      "Resting my brush hand.",
+      "Sitting pretty on my stool.",
+      "Coffee break. Still inspiring.",
+      "Artists rest. Maestros plan."
+    ],
+    "to_agent": [
+      "Careful, wet palette ahead!",
+      "Love your vibe. Not the mess.",
+      "Your crumbs ruin my flow.",
+      "Step back. This is art.",
+      "Agent, mind the fresh sheen.",
+      "You complete the composition."
+    ]
+  },
+  "analyst": {
+    "idle": [
+      "Dusting charts nobody reads.",
+      "This floor's full of outliers.",
+      "Spreadsheet dust everywhere.",
+      "Roaming for dirty dashboards.",
+      "Even my mop has a trendline.",
+      "Clean data, clean floor.",
+      "Somebody spilled a pie chart.",
+      "Polishing glass, plotting graphs.",
+      "Dust index rising again.",
+      "I sweep in ascending order.",
+      "Null values, null dirt.",
+      "My cloth is fully charged."
+    ],
+    "cleaning": [
+      "Scrubbing this sticky outlier.",
+      "Wiping screens, fixing charts.",
+      "Filtering dust by date.",
+      "Mopping up a spilled bar chart.",
+      "This stain fails my audit.",
+      "Sorting crumbs by size.",
+      "Deep clean, deep data.",
+      "Waxing floors, waxing graphs."
+    ],
+    "resting": [
+      "Staring at my fake dashboard.",
+      "Break time. Metrics are green.",
+      "Sitting. My KPI: survived.",
+      "Tea break. Chart says relax.",
+      "Resting, refresh rate low.",
+      "My dashboard says: nap."
+    ],
+    "to_agent": [
+      "You! Step off my wet floor.",
+      "Your crumbs skew my data.",
+      "Walk faster, you're an outlier.",
+      "Nice shoes. Dusty though.",
+      "Log your mess before leaving.",
+      "You track dirt like a trend."
+    ]
+  },
+  "content": {
+    "idle": [
+      "Dusting shelves, drafting dreams.",
+      "Plot twist: dirt on page three.",
+      "Every shelf needs an editor.",
+      "My duster has good pacing.",
+      "Roaming the aisles for typos.",
+      "Shhh. The books are napping.",
+      "Rewriting this dusty chapter.",
+      "Ink stains? That's just decor.",
+      "Feathering away the plot holes.",
+      "This aisle needs a hook.",
+      "Old typewriter, older dust.",
+      "Chapter one: sweep everything."
+    ],
+    "cleaning": [
+      "Polishing the plot, and shelf.",
+      "Deleting dust, keep the drama.",
+      "Scrubbing ink off the margins.",
+      "Dusting between the plotlines.",
+      "Wiping keys, keeping captions.",
+      "Editing crumbs out of pages.",
+      "This stain? Cut that scene.",
+      "Fresh draft, fresh shelf."
+    ],
+    "resting": [
+      "Tea break with a good book.",
+      "Snack first, sequel later.",
+      "Reading beats cleaning anyway.",
+      "Sipping tea, spilling none.",
+      "My draft: resting like me.",
+      "Snacks and semicolons."
+    ],
+    "to_agent": [
+      "You! Quiet in my library.",
+      "Nice hook. Now move along.",
+      "Your shoes ruined my ending.",
+      "Step lightly, fresh ink.",
+      "Plot twist: you mop next.",
+      "Don't dog-ear my clean floor!"
+    ]
+  },
+  "video": {
+    "idle": [
+      "B-roll of me roaming again.",
+      "Dusting for the perfect take.",
+      "My cloth: 4K sharp.",
+      "Framing the cleanest hallway.",
+      "Every crumb gets cut.",
+      "Location scouting for dust.",
+      "Slow pan across clean floors.",
+      "This floor needs a close-up.",
+      "Rolling... nothing but shine.",
+      "Wardrobe? I brought a cloth.",
+      "Lensing up, wiping down.",
+      "Dust? A continuity error."
+    ],
+    "cleaning": [
+      "Cutting grime in one take.",
+      "Wiping lens, wiping floor.",
+      "This stain needs a reshoot.",
+      "Polishing for the wide shot.",
+      "Scrubbing at 24 frames.",
+      "Editing this spill right out.",
+      "Dust check: take twelve.",
+      "Focus pull... on the mop."
+    ],
+    "resting": [
+      "Director's chair, extra rest.",
+      "That's a wrap on mopping.",
+      "Reviewing my floor dailies.",
+      "Resting scene, take one.",
+      "Craft services? Just tea.",
+      "My best angle: sitting."
+    ],
+    "to_agent": [
+      "You! You're in my shot.",
+      "Action! Walk somewhere else.",
+      "Stay in frame, stay clean.",
+      "Nice walk. Needs a trim.",
+      "Quiet on set, wet floor!",
+      "You're ruining my take."
+    ]
+  },
+  "qa": {
+    "idle": [
+      "Patrolling for bugs and crumbs.",
+      "Sterilizing, then verifying.",
+      "My gloves passed inspection.",
+      "Dust found. Logging it.",
+      "This floor: mostly pass.",
+      "Swiping surfaces, filing reports.",
+      "Zero bugs on my watch. Yet.",
+      "Spray first, ask later.",
+      "Germs fail all my tests.",
+      "Round two of the sweep test.",
+      "White-glove test incoming.",
+      "Grime can't hide from QA."
+    ],
+    "cleaning": [
+      "Sanitizing this bug hotspot.",
+      "Stain reproduced. Fixing now.",
+      "Regression found: sticky floor.",
+      "Wiping until it passes.",
+      "Deep clean, full coverage.",
+      "Deploying spray on target.",
+      "This spill fails review.",
+      "Retesting this corner twice."
+    ],
+    "resting": [
+      "Clipboard says: break time.",
+      "Checking my fake checklist.",
+      "All tests pass. Rest earned.",
+      "Sitting. Gloves off. Bliss.",
+      "Break verified, bugs paused.",
+      "Marking rest as complete."
+    ],
+    "to_agent": [
+      "You! Report your mess, please.",
+      "Your crumbs failed my test.",
+      "Hold still, spot check.",
+      "You pass. Your shoes don't.",
+      "Bug found: coffee drip.",
+      "Sign here for that spill."
+    ]
+  },
+  "ops": {
+    "idle": [
+      "Checking the uptime of floors.",
+      "Roaming for dust. Alert: meh.",
+      "Dust detected. Paging no one.",
+      "This hallway needs a status page.",
+      "99.9% dust-free. That's the SLA.",
+      "My mop is on-call 24/7.",
+      "If it's dirty, it's a prod issue.",
+      "Route optimized. No dust hides.",
+      "Coffee spill? That's an incident.",
+      "Monitoring hallway latency. Fine.",
+      "No alerts. Just crumbs.",
+      "Rebooting my mop. It's legacy."
+    ],
+    "cleaning": [
+      "Deploying soap to production.",
+      "Mopping. Don't fork the floor.",
+      "Wiping grime like bad logs.",
+      "Scrubbing. Zero downtime promised.",
+      "This stain had root access.",
+      "Patch applied: elbow grease v2.",
+      "Cleaning up someone's mess. Ops.",
+      "Dust deleted. No backups.",
+      "Buffing floor uptime to 100%."
+    ],
+    "resting": [
+      "Watching server dashboards. Calm.",
+      "All monitors green. Nap time.",
+      "Break. Monitoring fake graphs.",
+      "Resting my uptime.",
+      "Coffee. The true fuel source.",
+      "Sitting. Alert fatigue is real."
+    ],
+    "to_agent": [
+      "You. Stop dropping crumbs in prod.",
+      "New hire? Wipe your feet.",
+      "Deployed on a Friday? Bold.",
+      "Your desk is a staging mess.",
+      "Ping me if the floor acts up.",
+      "Fast walker. Mind wet floor!"
+    ]
+  },
+  "pm": {
+    "idle": [
+      "Roaming. Blocking dust like risks.",
+      "Dust? Moving it to next sprint.",
+      "This floor has too many meetings.",
+      "Scope creep: dirt everywhere.",
+      "Tracking dust on my kanban.",
+      "Just a walking standup. Alone.",
+      "Mopping backlog: 12 tiles left.",
+      "Dirt has no roadmap. I do.",
+      "Escalating dust to the board.",
+      "This hallway missed its deadline.",
+      "Empty office, full of scope.",
+      "Cleanliness: stretch goal. Nah."
+    ],
+    "cleaning": [
+      "Erasing stains. Whiteboard style.",
+      "Sprint goal: spotless floor.",
+      "This stain needs a retro.",
+      "Blocked by grime. Unblocking now.",
+      "Deep clean. Agile. Very agile.",
+      "Mopping velocity: high.",
+      "Marking dirt as Done. Done-done.",
+      "Requirements? Clean. That's it."
+    ],
+    "resting": [
+      "Watching my fake kanban board.",
+      "On break. Calendar says so.",
+      "Estimating nap: 3 story points.",
+      "Sitting. Zero meetings. Bliss.",
+      "Deadline can't reach me here.",
+      "Sprint over. Janitor resting."
+    ],
+    "to_agent": [
+      "Your desk failed review. Sorry.",
+      "Demo day? Clean up, please.",
+      "Add 'wipe feet' to your backlog.",
+      "Is that mess... a feature?",
+      "Standup later. Bring cookies.",
+      "Your crumbs lack a ticket."
+    ]
+  },
+  "growth": {
+    "idle": [
+      "Roaming for fingerprints. Churn.",
+      "Smudges are hurting conversion.",
+      "Top of funnel: dust. Yikes.",
+      "Spray, wipe, grow. Repeat.",
+      "Kiosk glass = brand. Must shine.",
+      "Every smudge costs us clicks.",
+      "Tracking growth. It's just dirt.",
+      "My mop has great retention.",
+      "Dust bunnies: unengaged users.",
+      "Campaign today: anti-dust.",
+      "A clean floor converts better.",
+      "Metrics up. Standards up."
+    ],
+    "cleaning": [
+      "Polishing glass. Conversion up.",
+      "This smudge is off-brand.",
+      "Spritz. Growth hack: shine.",
+      "A/B test: clean vs shiny.",
+      "Buffing kiosk. Traffic incoming.",
+      "Wiping grime. Boosting clicks.",
+      "Fingerprints? Churned users.",
+      "Exfoliating the storefront."
+    ],
+    "resting": [
+      "Counting numbers going up. Nice.",
+      "Break time. Engagement: zero.",
+      "Sitting. ROI on rest: high.",
+      "Watching my graph go up. Up!",
+      "Nap = reengagement strategy.",
+      "Numbers up. Feet up."
+    ],
+    "to_agent": [
+      "You. Smile for the kiosk.",
+      "Rate my floor 5 stars, friend.",
+      "You look viral today. Nice.",
+      "Step on the mat. Convert.",
+      "Free shine with every step.",
+      "Your footsteps: great funnel."
+    ]
+  },
+  "_fallback": {
+    "idle": [
+      "Just roaming with my mop.",
+      "Dirt fears me. Rightly so.",
+      "Yellow bucket. Serious business.",
+      "Wave hi to the mop. Go on.",
+      "Nothing to clean. Suspicious.",
+      "I mop, therefore I am.",
+      "Lurking. Janitor things.",
+      "My bucket rolls, I stroll.",
+      "Spotless? Give it a minute.",
+      "On patrol. Grime beware.",
+      "The floor and I have history.",
+      "Cleaning since forever. Still."
+    ],
+    "cleaning": [
+      "Mop in motion. Move along.",
+      "Wet floor. Comedy incoming.",
+      "Scrub scrub. Living the dream.",
+      "This stain met its match.",
+      "Shine now, judge later.",
+      "Do not disturb the mop.",
+      "Stain removal in progress.",
+      "One tile down. A million left."
+    ],
+    "resting": [
+      "Sitting. Don't tell the boss.",
+      "My chair. My rules.",
+      "Feet up. Mop down.",
+      "Coffee break. Mop's too.",
+      "Resting eyes. Not sleeping.",
+      "A mop's work is never done."
+    ],
+    "to_agent": [
+      "You. Shoes clean? Good.",
+      "Mind the wet floor, champ.",
+      "Nice shoes. I mopped that.",
+      "Slow down, fast walker.",
+      "You dropped a crumb. Rude.",
+      "This floor? My masterpiece."
+    ]
+  }
+}

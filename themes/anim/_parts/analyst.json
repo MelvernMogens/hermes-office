@@ -1,0 +1,36 @@
+{
+ "panel": {
+  "frames": [
+   "anim/analyst_panel_0.png",
+   "anim/analyst_panel_1.png",
+   "anim/analyst_panel_2.png",
+   "anim/analyst_panel_3.png",
+   "anim/analyst_panel_4.png",
+   "anim/analyst_panel_5.png",
+   "anim/analyst_panel_6.png",
+   "anim/analyst_panel_7.png",
+   "anim/analyst_panel_8.png",
+   "anim/analyst_panel_9.png"
+  ],
+  "fps": 6,
+  "pingpong": false
+ },
+ "eom": {
+  "frames": [
+   "anim/analyst_eom_0.png",
+   "anim/analyst_eom_1.png",
+   "anim/analyst_eom_2.png",
+   "anim/analyst_eom_3.png",
+   "anim/analyst_eom_4.png",
+   "anim/analyst_eom_5.png",
+   "anim/analyst_eom_6.png",
+   "anim/analyst_eom_7.png",
+   "anim/analyst_eom_8.png",
+   "anim/analyst_eom_9.png",
+   "anim/analyst_eom_10.png"
+  ],
+  "fps": 5,
+  "idleHoldMs": 300
+ },
+ "note": "bar chart rises bar-by-bar, headline number counts up, line-trend draws itself left->right, pie chart slice boundary sweeps one full rotation over the loop. portrait EOM v2b: an outlined arm+sleeve rises from off-frame all the way to shoulder/face height holding a big light chart-card with a bright rising bar chart on it, while the head turns to the side then nods approving the chart, turns the other way, blink -- static glasses lighting, no glint sweep."
+}

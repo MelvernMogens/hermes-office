@@ -1,0 +1,1603 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>hermes-office · self-test harness (v3.1)</title>
+<script src="./react.production.min.js"></script>
+<script src="./react-dom.production.min.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "react": "./react-esm.js?v=3",
+    "react/jsx-runtime": "./jsx-runtime-shim.js?v=3",
+    "@hermes/plugin-sdk": "./sdk-stub.js?v=9"
+  }
+}
+</script>
+<script>
+/* mini-react bridge → real React (harness Part 3 calls MR.createRoot) */
+window.__MINI_REACT__ = {
+  createRoot(renderFn, container) {
+    const root = window.ReactDOM.createRoot(container);
+    const Comp = function () { return renderFn(); };
+    const paint = () => root.render(window.React.createElement(Comp));
+    paint();
+    return { unmount: () => root.unmount(), render: paint };
+  },
+};
+</script>
+<style>
+/* mirror the Desktop host's Tailwind preflight so layout bugs that only show in the real app are caught here */
+img, video { max-width: 100%; height: auto; } img, svg, video { display: block; vertical-align: middle; }
+
+  :root, html[data-theme="dark"] {
+    --ui-accent: #5b9dff; --ui-text-secondary: #c7d0dc; --ui-text-tertiary: #98a2b3;
+    --ui-text-quaternary: #5f6875; --ui-stroke-secondary: #3a4150; --ui-bg: #14171d;
+  }
+  html[data-theme="light"] {
+    --ui-accent: #2563eb; --ui-text-secondary: #2c3440; --ui-text-tertiary: #5a6472;
+    --ui-text-quaternary: #8b94a3; --ui-stroke-secondary: #d8dee7; --ui-bg: #f5f7fa;
+  }
+  html, body { margin: 0; height: 100%; }
+  body { background: var(--ui-bg); color: var(--ui-text-secondary); font: 13px/1.45 -apple-system, system-ui, sans-serif; display: flex; }
+  #controls { width: 230px; flex: none; padding: 12px; border-right: 1px solid var(--ui-stroke-secondary); display: flex; flex-direction: column; gap: 10px; overflow: auto; }
+  #controls h1 { font-size: 13px; margin: 0; color: var(--ui-text-secondary); }
+  #controls .grp { display: flex; flex-wrap: wrap; gap: 4px; }
+  #controls .grp label { width: 100%; font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--ui-text-tertiary); margin-bottom: -2px; }
+  #controls button { font: 11px/1 inherit; padding: 5px 9px; border-radius: 7px; border: 1px solid var(--ui-stroke-secondary); background: transparent; color: var(--ui-text-tertiary); cursor: pointer; }
+  #controls button.on { color: var(--ui-accent); border-color: var(--ui-accent); }
+  #results { font: 11px/1.5 ui-monospace, monospace; }
+  #results .pass { color: #4cc38a; }
+  #results .fail { color: #ff6b6b; font-weight: 700; }
+  #results .hdr { color: var(--ui-text-tertiary); margin-top: 4px; }
+  #stage { flex: 1; min-width: 0; display: flex; align-items: stretch; justify-content: center; padding: 18px; }
+  #preview { position: relative; width: 680px; max-width: 100%; border: 1px solid var(--ui-stroke-secondary); border-radius: 14px; overflow: hidden; background: var(--ui-bg); transition: width .25s ease; }
+  #preview > .office-root { width: 100%; }
+  #preview.narrow { width: 300px; }
+  #preview.wide { width: 1240px; }
+  .office-glyph-spinner { display: inline-block; animation: officeh-spin 1s linear infinite; color: var(--ui-text-tertiary); }
+  @keyframes officeh-spin { to { transform: rotate(360deg); } }
+  #status { font-size: 11px; color: var(--ui-text-quaternary); }
+</style>
+</head>
+<body data-theme="dark">
+  <div id="controls">
+    <h1>hermes-office harness (v3.1)</h1>
+    <div class="grp"><label>scenario</label>
+      <button data-scenario="full" class="on">full</button>
+      <button data-scenario="empty">empty</button>
+      <button data-scenario="error">error</button>
+    </div>
+    <div class="grp"><label>theme</label>
+      <button data-theme-btn="dark" class="on">dark</button>
+      <button data-theme-btn="light">light</button>
+    </div>
+    <div class="grp"><label>locale</label>
+      <button data-locale="en" class="on">en</button>
+      <button data-locale="id">id</button>
+    </div>
+    <div class="grp"><label>width</label>
+      <button data-width="narrow">300px</button>
+      <button data-width="normal" class="on">680px</button>
+      <button data-width="wide">1240px</button>
+    </div>
+    <div class="grp"><label>atoms</label>
+      <button id="btn-busy">toggle busy(rt-a)</button>
+      <button id="btn-focus">toggle focus(rt-b)</button>
+    </div>
+    <div class="grp"><label>events</label>
+      <button data-event="sessions.changed">sessions.changed</button>
+      <button data-event="message.complete">message.complete</button>
+      <button data-event="gateway.ready">gateway.ready</button>
+    </div>
+    <div id="status">booting…</div>
+    <div id="results"></div>
+  </div>
+  <div id="stage"><div id="preview"></div></div>
+
+<script>
+/* ================================================================ *
+ * Part 1 — mock host, atoms, RPC scenarios, event bus             *
+ * ================================================================ */
+(function () {
+  window.__consoleErrors__ = [];
+  { const ce = console.error.bind(console); console.error = function () { try { window.__consoleErrors__.push('console.error: ' + Array.from(arguments).map(String).join(' ').slice(0, 300)); } catch (e) {} return ce.apply(null, arguments); }; }
+  window.addEventListener('error', (e) => {
+    window.__consoleErrors__.push(String((e.error && e.error.stack) || e.message || 'error'));
+  });
+  window.addEventListener('unhandledrejection', (e) => {
+    window.__consoleErrors__.push(String((e.reason && e.reason.stack) || e.reason || 'rejection'));
+  });
+  function atom(initial) {
+    let cur = initial;
+    const listeners = [];
+    return {
+      subscribe(fn) { listeners.push(fn); return () => { const i = listeners.indexOf(fn); if (i >= 0) listeners.splice(i, 1); }; },
+      get() { return cur; },
+      __set(v) { cur = v; for (const f of listeners.slice()) { try { f(v); } catch (e) {} } },
+    };
+  }
+  const now = () => Math.floor(Date.now() / 1000);
+  function scenarioData(mode) {
+    if (mode === 'empty') return { s: { sessions: [] }, stored: { sessions: [] }, prof: { profiles: [] } };
+    if (mode === 'error') return { err: true };
+    const t = now();
+    const bots = [
+      { name: 'hermes', display_name: 'Hermes', model: 'glm-5.3', canonical_session: { id: 'ps-hermes-1', status: 'streaming', title: 'Daily digest run', model: 'glm-5.3', last_active: t - 12, message_count: 88 }, last_session: { id: 'ps-hermes-1', status: 'streaming', title: 'Daily digest run', model: 'glm-5.3', last_active: t - 12 } },
+      { name: 'video', display_name: 'Video', model: 'glm-5.3', canonical_session: { id: 'ps-video-1', status: 'idle', title: 'TikTok retention cut', model: 'glm-5.3', last_active: t - 900, message_count: 31 }, last_session: { id: 'ps-video-1', status: 'idle', title: 'TikTok retention cut', model: 'glm-5.3', last_active: t - 900 } },
+      { name: 'content', display_name: 'Content', model: 'glm-5.3', canonical_session: null, last_session: { id: 'ps-content-9', status: 'completed', title: 'Script draft', model: 'glm-5.3', last_active: t - 7200 } },
+      { name: 'designer', display_name: 'Designer', model: 'glm-5.3', canonical_session: { id: 'ps-designer-1', status: 'idle', title: 'Overlay pass', model: 'glm-5.3', last_active: t - 240, message_count: 12 }, last_session: { id: 'ps-designer-1', status: 'idle', title: 'Overlay pass', model: 'glm-5.3', last_active: t - 240 } },
+      { name: 'scout', display_name: 'Scout (unthemed)', model: 'glm-5.3', canonical_session: null, last_session: { id: 'ps-scout-4', status: 'completed', title: 'Calendar W38', model: 'glm-5.3', last_active: t - 86400 * 2 } },
+      { name: 'relay', display_name: 'Relay (unthemed)', model: 'glm-5.3', canonical_session: { id: 'ps-relay-1', status: 'streaming', title: 'Deploy dashboard v2', model: 'glm-5.3', last_active: t - 3, message_count: 140 }, last_session: { id: 'ps-relay-1', status: 'streaming', title: 'Deploy dashboard v2', model: 'glm-5.3', last_active: t - 3 } },
+      { name: 'orchestrator', display_name: 'Orchestrator', model: 'glm-5.3', canonical_session: { id: 'ps-orch-1', status: 'idle', title: 'Route research batch', model: 'glm-5.3', last_active: t - 3600, message_count: 55 }, last_session: { id: 'ps-orch-1', status: 'idle', title: 'Route research batch', model: 'glm-5.3', last_active: t - 3600 } },
+      { name: 'scribe', display_name: 'Scribe (unthemed)', model: 'glm-5.3', canonical_session: null, last_session: { id: 'ps-scribe-2', status: 'completed', title: 'Weekly review notes', model: 'glm-5.3', last_active: t - 86400 } },
+      { name: 'qa', display_name: 'QA', model: 'glm-5.3', canonical_session: { id: 'ps-qa-1', status: 'idle', title: 'Sweep UI', model: 'glm-5.3', last_active: t - 600, message_count: 27 }, last_session: { id: 'ps-qa-1', status: 'idle', title: 'Sweep UI', model: 'glm-5.3', last_active: t - 600 } },
+      { name: 'coder', display_name: 'Coder', model: 'glm-5.3', canonical_session: null, last_session: null },
+      { name: 'ghost', display_name: 'Ghost (stale streamer)', model: 'glm-5.3', canonical_session: { id: 'ps-ghost-1', status: 'streaming', title: 'Hung stream', model: 'glm-5.3', last_active: t - 600, message_count: 3 }, last_session: { id: 'ps-ghost-1', status: 'streaming', title: 'Hung stream', model: 'glm-5.3', last_active: t - 600 }, worker_session: { id: 'wk-ghost', status: 'working', last_active: t - 600 } },
+    ];
+    return {
+      prof: { profiles: [{ name: 'default', display_name: 'Default', model: 'glm-5.3', is_default: true, canonical_session: null, last_session: null }].concat(bots).concat(window.__OFFICE_EXTRA_BOTS__ || []) },
+      s: { sessions: [
+        { id: 'rt-a', session_key: 'st-a', current: true, status: 'streaming', title: 'Refactor gateway', preview: 'writing tests…', model: 'glm-5.3', last_active: t - 5, started_at: t - 4000, message_count: 42 },
+        { id: 'rt-b', session_key: 'st-b', current: false, status: 'idle', title: 'Research pass', preview: 'reading docs…', model: 'kimi-k2', last_active: t - 600, started_at: t - 9000, message_count: 7 },
+      ] },
+      stored: { sessions: [
+        { id: 'st-x', title: 'Site build', preview: 'hero gradient tuning', message_count: 220 },
+        { id: 'st-a', title: 'Refactor gateway', preview: 'writing tests…', message_count: 42 },
+      ] },
+      subagents: {
+        'rt-a': [
+          { subagent_id: 'sa-1', goal: 'Map the gateway module', status: 'running', tool_count: 4, last_tool: 'search_files', started_at: t - 300, model: 'gpt-5.2' },
+          { subagent_id: 'sa-2', goal: 'Write harness cases', status: 'running', tool_count: 2, last_tool: 'read_file', started_at: t - 120, model: 'glm-5.3' },
+        ],
+        'rt-b': [
+          { subagent_id: 'sa-3', goal: 'Summarize RFC notes', status: 'completed', tool_count: 7, last_tool: 'write_file', started_at: t - 800 },
+        ],
+      },
+      tails: {
+        'sa-1': { lines: ['$ search_files plugin.js', '12 matches in 3 files'] },
+        'sa-2': { text: 'asserting popover DOM…' },
+        'sa-3': { text: 'summary written to notes.md' },
+      },
+    };
+  }
+  window.__OFFICE_RPC__ = { mode: 'full', counts: {} };
+  window.__OFFICE_ATOMS__ = {
+    busyBySession: atom(undefined),
+    focusedSessionId: atom(null),
+    gateway: atom({ connected: true }),
+  };
+  const handlers = {};
+  window.__OFFICE_EMITEV__ = (ev) => { (handlers[ev.type] || []).slice().forEach((f) => { try { f(ev); } catch (e) {} }); };
+  window.__OFFICE_EMIT__ = (type) => { (handlers[type] || []).slice().forEach((f) => { try { f({ type }); } catch (e) {} }); };
+  window.__OFFICE_HOST__ = {
+    request(method, params) {
+      const c = window.__OFFICE_RPC__.counts;
+      c[method] = (c[method] || 0) + 1;
+      const data = scenarioData(window.__OFFICE_RPC__.mode);
+      if (data.err) return Promise.reject(new Error('gateway down (mock)'));
+      if (method === 'session.active_list') return Promise.resolve(data.s);
+      if (method === 'profiles.list') return Promise.resolve(data.prof || { profiles: [] });
+      if (method === 'session.list') {
+        if (params && params.title === 'Bot Chat') {
+          window.__OFFICE_BOTCHAT_Q__ = (window.__OFFICE_BOTCHAT_Q__ || []).concat([JSON.stringify(params)]);
+          const id = (window.__OFFICE_BOTCHATS__ || {})[params.profile];
+          return Promise.resolve({ sessions: id ? [{ id: id, title: 'Bot Chat', preview: '', started_at: 1, message_count: 9, source: 'desktop' }] : [] });
+        }
+        if (params && params.include_hidden && !params.title) {
+          /* v5.5 drawer: hidden side-chats lookup (+ New chat tabs are born hidden) */
+          return Promise.resolve({ sessions: ((window.__OFFICE_HIDDEN__ || {})[params.profile] || []).slice() });
+        }
+        return Promise.resolve(data.stored || { sessions: [] });
+      }
+      if (method === 'subagent.list') {
+        const sid = params && params.session_id;
+        (window.__OFFICE_SUBAGENT_SIDS__ = window.__OFFICE_SUBAGENT_SIDS__ || []).push(String(sid));
+        return Promise.resolve({ subagents: (data.subagents && data.subagents[sid]) || [] });
+      }
+      if (method === 'session.children') {
+        if (window.__OFFICE_CHILDREN_UNSUPPORTED__) return Promise.reject(new Error('Method not found: session.children (-32601)'));
+        const prof = params && params.profile;
+        return Promise.resolve({ children: ((window.__OFFICE_CHILDREN__ || {})[prof] || []).slice() });
+      }
+      if (method === 'subagent.tail') {
+        const key = params && params.subagent_id;
+        const tv = data.tails && data.tails[key];
+        if (!tv) return Promise.reject(new Error('no tail (mock)'));
+        return Promise.resolve(tv);
+      }
+      return Promise.resolve({});
+    },
+    onEvent(type, fn) {
+      (handlers[type] || (handlers[type] = [])).push(fn);
+      return () => { const a = handlers[type] || []; const i = a.indexOf(fn); if (i >= 0) a.splice(i, 1); };
+    },
+    notify() {},
+    openSession(storedId, opts) {
+      const c = window.__OFFICE_RPC__.counts;
+      c['openSession'] = (c['openSession'] || 0) + 1;
+      window.__OFFICE_LASTOPEN__ = String(storedId);
+      window.__OFFICE_LASTOPEN_OPTS__ = opts || null;
+      return true;
+    },
+    newChat(profile, opts) {
+      const c = window.__OFFICE_RPC__.counts;
+      c['newChat'] = (c['newChat'] || 0) + 1;
+      window.__OFFICE_LASTNEW__ = { profile: profile, opts: opts || null };
+    },
+    profileRoutes() {
+      const names = ['default', 'coder', 'designer', 'content', 'video', 'qa'];
+      return Promise.resolve(names.map((n) => ({ connectionId: 'local', mode: 'local', profile: n, targetProfile: n })));
+    },
+    setWorkspaceOwnerLabel(k, l) { window.__OFFICE_OWNERLABEL__ = { k: k, l: l }; },
+    setWorkspaceScope(m) { window.__OFFICE_SCOPE__ = m; return true; },
+    listPersistedSessions(route, opts) {
+      const c = window.__OFFICE_RPC__.counts;
+      c['listPersistedSessions'] = (c['listPersistedSessions'] || 0) + 1;
+      window.__OFFICE_LASTLIST__ = { route: route, opts: opts };
+      const all = ((window.__OFFICE_PERSISTED__ || {})[opts && opts.profile] || []);
+      return Promise.resolve({ sessions: all.slice(0, (opts && opts.limit) || 200), total: all.length, limit: opts && opts.limit, offset: 0 });
+    },
+    state: {
+      busyBySession: window.__OFFICE_ATOMS__.busyBySession,
+      focusedSessionId: window.__OFFICE_ATOMS__.focusedSessionId,
+      gateway: window.__OFFICE_ATOMS__.gateway,
+    },
+  };
+  window.__OFFICE_LOCALE__ = 'en';
+  window.__OFFICE_I18N__ = {};
+  window.__OFFICE_TEST__ = { registrations: [], i18nBundles: null };
+})();
+</script>
+
+<script>
+/* ================================================================ *
+ * Part 2 — mini-react + jsx-runtime + plugin-sdk stubs            *
+ * ================================================================ */
+</script>
+
+<script>
+/* ================================================================ *
+ * Part 3 — load the real plugin, mount it, wire controls, run tests *
+ * ================================================================ */
+(function () {
+  const modSrc = `
+const mod = await import('../plugin.js?v=' + Date.now());
+  const V40 = mod.__v40; const V5 = mod.__v5; const V52 = mod.__v52; /* v4.0 unit hooks: rawFloorStatus/hystStep/detectBurst */
+const MR = window.__MINI_REACT__;
+window.__PLUGIN__ = mod;
+/* v5.0: honour ?scenario=full|empty|error (previously ignored -> every URL run was FULL) */
+{
+  const qsMode = new URLSearchParams(location.search).get('scenario');
+  if (qsMode === 'full' || qsMode === 'empty' || qsMode === 'error') {
+    window.__OFFICE_RPC__.mode = qsMode;
+    document.querySelectorAll('[data-scenario]').forEach((b) => b.classList.toggle('on', b.getAttribute('data-scenario') === qsMode));
+  }
+}
+const $ = (s) => document.querySelector(s);
+const preview = $('#preview');
+const statusEl = $('#status');
+const resultsEl = $('#results');
+
+function setStatus(s) { statusEl.textContent = s; }
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < ms) { const v = fn(); if (v) return v; await sleep(40); }
+  return fn();
+}
+
+/* fake registration ctx */
+const captured = { registrations: [], i18nBundles: null, dispose: null };
+const fakeCtx = {
+  register(entry) {
+    captured.registrations.push(entry);
+    return () => { const i = captured.registrations.indexOf(entry); if (i >= 0) captured.registrations.splice(i, 1); };
+  },
+  i18n: { register(bundles) { captured.i18nBundles = bundles; window.__OFFICE_I18N__['hermes-office'] = bundles; return () => {}; } },
+};
+const disposer = mod.register ? mod.register(fakeCtx) : mod.default && mod.default.register(fakeCtx);
+captured.dispose = typeof disposer === 'function' ? disposer : (disposer && typeof disposer.dispose === 'function' ? disposer.dispose : null);
+
+const pane = captured.registrations.find((r) => r.area === 'panes');
+if (!pane) throw new Error('no panes registration');
+let root = null;
+function mount() {
+  if (root) { root.unmount(); root = null; }
+  root = MR.createRoot(() => (pane.render ? pane.render({}) : null), preview);
+}
+mount();
+setStatus('mounted');
+
+/* ------- controls ------- */
+function bindGroup(sel, attr, fn) {
+  document.querySelectorAll(sel).forEach((b) => {
+    b.addEventListener('click', () => {
+      document.querySelectorAll(sel).forEach((x) => x.classList.remove('on'));
+      b.classList.add('on');
+      fn(b.getAttribute(attr));
+    });
+  });
+}
+bindGroup('[data-scenario]', 'data-scenario', (v) => { window.__OFFICE_RESULTS__ = null; window.__OFFICE_RPC__.mode = v; mount(); runTests(); });
+bindGroup('[data-theme-btn]', 'data-theme-btn', (v) => { document.documentElement.dataset.theme = v; mount(); runTests(); });
+bindGroup('[data-locale]', 'data-locale', (v) => { window.__OFFICE_LOCALE__ = v; mount(); runTests(); });
+bindGroup('[data-width]', 'data-width', (v) => {
+  preview.classList.remove('narrow', 'wide');
+  if (v !== 'normal') preview.classList.add(v);
+});
+document.querySelectorAll('[data-event]').forEach((b) => {
+  b.addEventListener('click', () => window.__OFFICE_EMIT__(b.getAttribute('data-event')));
+});
+$('#btn-busy').addEventListener('click', () => {
+  const a = window.__OFFICE_ATOMS__.busyBySession;
+  a.__set(a.get() ? undefined : { 'rt-a': true });
+});
+$('#btn-focus').addEventListener('click', () => {
+  const a = window.__OFFICE_ATOMS__.focusedSessionId;
+  a.__set(a.get() ? null : 'rt-b');
+});
+
+/* ------- test suite ------- */
+const T = { pass: 0, fail: 0, lines: [] };
+window.__OFFICE_T__ = T; /* live progress for runners */
+function check(name, cond) {
+  if (cond) { T.pass++; T.lines.push('✔ ' + name); }
+  else { T.fail++; T.lines.push('✘ ' + name); }
+}
+let __running = false;
+async function runTests() {
+  if (__running) return;
+  __running = true;
+  try {
+    await __runTestsInner();
+  } finally {
+    __running = false;
+  }
+}
+async function __runTestsInner() {
+  T.pass = 0; T.fail = 0; T.lines = [];
+  const mode = window.__OFFICE_RPC__.mode;
+  /* v5.6: ?suite=off -> mount only (screenshot scripts drive the office themselves) */
+  if (new URLSearchParams(location.search).get('suite') === 'off') { window.__OFFICE_RESULTS__ = { pass: 0, fail: 0, lines: ['suite off'] }; return; }
+
+  /* module + registration shape (always) */
+  check('plugin default export id = hermes-office', mod.default && mod.default.id === 'hermes-office');
+  check('register() returns disposer', typeof captured.dispose === 'function');
+  const reg = captured.registrations.find((r) => r.area === 'panes');
+  check('pane registered in panes area', !!reg);
+  check('docks center on sessions pane', reg && reg.data && reg.data.dock && reg.data.dock.pane === 'sessions' && reg.data.dock.pos === 'center');
+  check('i18n registers en + id bundles', captured.i18nBundles && captured.i18nBundles.en && captured.i18nBundles.id);
+
+  /* (f) v4.0 status unit tests — pure fns, run in EVERY mode */
+  if (V40) {
+    const mk = (la) => ({ worker: null, lastSess: la != null ? { last_active: la } : null });
+    const nowMs = 1000000;
+    const r = [59, 61, 899, 901].map((a) => V40.rawFloorStatus(mk(nowMs / 1000 - a), nowMs));
+    check('(f) status windows 59/61/899/901s -> ' + r.join(','), r.join(',') === 'working,idle,idle,away' && V40.rawFloorStatus(mk(null), nowMs) === 'away');
+    let h = { shown: 'idle', seen: 'idle' };
+    h = V40.hystStep(h, 'working'); const a1 = h.shown === 'idle';
+    h = V40.hystStep(h, 'working'); const a2 = h.shown === 'working';
+    h = V40.hystStep(h, 'idle'); const a3 = h.shown === 'working';
+    check('(f) hysteresis flips only after 2 polls', a1 && a2 && a3);
+    check('(f) burst detector', V40.detectBurst(31, 34, 120, 5000) === 17000 && V40.detectBurst(31, 31, 120, 5000) === 0 && V40.detectBurst(31, 40, 1200, 5000) === 0);
+  } else check('(f) __v40 export present', false);
+  if (mode === 'error') {
+    await until(() => preview.querySelector('.retry'), 3000);
+    await sleep(200);
+    check('error state shows retry button', !!preview.querySelector('.retry'));
+    check('error text present', preview.textContent.includes('unreachable'));
+    const before = (window.__OFFICE_RPC__.counts['session.active_list'] || 0);
+    preview.querySelector('.retry').click();
+    await sleep(400);
+    check('retry re-issues active_list request', (window.__OFFICE_RPC__.counts['session.active_list'] || 0) > before);
+    return finish();
+  }
+
+  if (mode === 'empty') {
+    await until(() => preview.querySelector('.empty'), 3000);
+    await sleep(200);
+    check('empty state renders', !!preview.querySelector('.empty'));
+    check('empty title text present', preview.textContent.includes('office') || preview.textContent.includes('kantor'));
+    return finish();
+  }
+
+  /* ================= v5.0 "PERSIS GITHUB" suite ================= */
+  await until(() => preview.querySelectorAll('[data-testid="interior"]').length >= 12, 12000);
+  await until(() => { const d = defF(); return d && d.querySelectorAll('[data-testid="agent"][data-phase="idle"]').length >= 2; }, 15000);
+  await sleep(500);
+  const secs = preview.querySelectorAll('[data-testid="interior"]');
+  function defF() { return Array.from(preview.querySelectorAll('[data-testid="interior"]')).find((r) => r.getAttribute('data-pname') === 'default'); }
+  function W(sec) { const w = sec.querySelector('[data-testid="world"]'); const r = w.getBoundingClientRect(); return { r, sc: r.width / 1280 }; }
+  function wbox(sec, el) { const { r, sc } = W(sec); const e = el.getBoundingClientRect(); return { x: (e.left - r.left) / sc, y: (e.top - r.top) / sc, w: e.width / sc, h: e.height / sc }; }
+
+  check('one scroller: all 12 floors inline, no second page', secs.length === 12 && !preview.querySelector('[data-testid="stage"]'));
+  const scrollCS = getComputedStyle(preview.querySelector('[data-testid="building"]'));
+  check('scroller overflow-y auto', scrollCS.overflowY === 'auto' || scrollCS.overflowY === 'scroll');
+  check('default floor first', secs[0] && secs[0].getAttribute('data-pname') === 'default');
+  check('world is the ref room 1280x1024', (() => { const { r, sc } = W(secs[0]); return Math.abs(r.width / sc - 1280) < 1 && Math.abs(r.height / sc - 1024) < 1; })());
+
+  /* (a) non-default floors: 0 agents, header without x/y counter or "subagent" */
+  {
+    const bad = [];
+    Array.from(secs).forEach((f) => {
+      if (f.getAttribute('data-pname') === 'default') return;
+      const n = f.querySelectorAll('[data-testid="agent"]').length;
+      const ht = (f.querySelector('[data-testid="flr-h"]') || {}).textContent || '';
+      if (n !== 0 || /\\d+\\/\\d+/.test(ht) || /subagent/i.test(ht)) bad.push(f.getAttribute('data-pname') + ':' + n + ':' + ht);
+    });
+    check('(a) non-default floors: 0 agents + no "x/y"/"subagent" in header' + (bad.length ? ' bad=' + bad.join('|') : ' (' + (secs.length - 1) + '/' + (secs.length - 1) + ')'), bad.length === 0);
+  }
+  /* (b) default floor with 2 mock subagents */
+  {
+    const d = defF();
+    const ag = d.querySelectorAll('[data-testid="agent"]');
+    const mq = Array.from(d.querySelectorAll('[data-testid="marquee"]')).map((m) => m.textContent);
+    const goalsOk = mq.some((t) => t.includes('Map the gateway module')) && mq.some((t) => t.includes('Write harness cases'));
+    const hc = (d.querySelector('[data-testid="subcount"]') || {}).textContent || '';
+    check('(b) default: exactly 2 capsule agents (' + ag.length + ') + goal marquees (' + goalsOk + ') + header "' + hc + '"', ag.length === 2 && goalsOk && hc === '2 subagents');
+  }
+  /* (c) 8 desks per floor at 256+col*256 / 408+row*192 +-2 world */
+  {
+    let bad = 0, n = 0;
+    Array.from(secs).forEach((f) => {
+      const desks = f.querySelectorAll('img[data-testid="desk"]');
+      if (desks.length !== 8) bad += 100;
+      desks.forEach((el) => {
+        const i = +el.getAttribute('data-i'); const bx = wbox(f, el);
+        const ex = 256 + (i % 4) * 256, ey = 408 + Math.floor(i / 4) * 192;
+        n++; if (Math.abs(bx.x + bx.w / 2 - ex) > 2 || Math.abs(bx.y - 30 - ey) > 2) bad++;
+      });
+    });
+    check('(c) 8 desks/floor at ref grid +-2px (' + (n - bad) + '/' + n + ')', bad === 0 && n === 96);
+  }
+  /* (d) boss {640,900} +-4, rug under boss, elevator {86,178} +-4 */
+  {
+    let bad = [];
+    Array.from(secs).forEach((f) => {
+      const bo = f.querySelector('[data-testid="boss"]'), rug = f.querySelector('[data-testid="rug"]'), ev = f.querySelector('[data-testid="elevator"]');
+      if (!bo || !rug || !ev) { bad.push(f.getAttribute('data-pname') + ':missing'); return; }
+      const B = wbox(f, bo), R = wbox(f, rug), E = wbox(f, ev);
+      const bx = B.x + B.w / 2, by = B.y + 40 - 6; /* capsule centre is (0,6) from boss pos */
+      if (Math.abs(bx - 640) > 4 || Math.abs(by - 900) > 4) bad.push('boss ' + bx.toFixed(1) + ',' + by.toFixed(1));
+      const rx = R.x + R.w / 2, ry = R.y + R.h / 2;
+      const under = +getComputedStyle(rug).zIndex < +getComputedStyle(bo).zIndex && Math.abs(rx - 640) < 4 && Math.abs(ry - 940) < 4 && R.y < by && R.y + R.h > by;
+      if (!under) bad.push('rug ' + rx.toFixed(1) + ',' + ry.toFixed(1));
+      const ex = E.x + E.w / 2, ey = E.y + E.h / 2;
+      if (Math.abs(ex - 86) > 4 || Math.abs(ey - 178) > 4) bad.push('elev ' + ex.toFixed(1) + ',' + ey.toFixed(1));
+    });
+    check('(d) boss {640,900}, rug under boss {640,940}, elevator {86,178} on 12 floors' + (bad.length ? ' bad=' + bad.slice(0, 3).join('|') : ''), bad.length === 0);
+  }
+  /* (e) capsule 48x80 world + stroke 4 = theme.agentStroke of that floor (no theme -> ref white) */
+  {
+    const d = defF();
+    const caps = Array.from(preview.querySelectorAll('[data-testid="capsule"]'));
+    let bad = 0;
+    caps.forEach((c) => {
+      const f = c.closest('[data-testid="interior"]'); const bx = wbox(f, c.querySelector('svg'));
+      const rect = c.querySelector('svg rect');
+      const st = rect && (rect.getAttribute('stroke') || '').toLowerCase();
+      const pn = f.getAttribute('data-pname'); const th = V52 && V52.themeFor(pn);
+      const want = ((th && th.raw.agentStroke) || '#fff').toLowerCase();
+      if (Math.abs(bx.w - 48) > 2 || Math.abs(bx.h - 80) > 2 || st !== want || rect.getAttribute('stroke-width') !== '4') bad++;
+    });
+    const noPixel = !preview.querySelector('.ws-chr, img[src^="data:image/png"][width="16"]');
+    check('(e) capsules 48x80 world + stroke 4 = theme.agentStroke (' + (caps.length - bad) + '/' + caps.length + '), no PixelChar', bad === 0 && caps.length === 14 && noPixel);
+  }
+  /* status honesty in the DOM: ghost (stale 'streaming' 10 min) must NOT be working */
+  {
+    const g = Array.from(secs).find((f) => f.getAttribute('data-pname') === 'ghost');
+    check('stale streamer shows idle, not working (' + (g && g.getAttribute('data-status')) + ')', g && g.getAttribute('data-status') === 'idle');
+    const w = Array.from(secs).filter((f) => f.getAttribute('data-status') === 'working').map((f) => f.getAttribute('data-pname'));
+    check('working floors = only fresh (<60s) bots: ' + w.join(','), w.sort().join(',') === 'hermes,relay');
+  }
+  /* boss click -> openSession */
+  window.__OFFICE_LASTOPEN__ = null;
+  secs[0].querySelector('[data-testid="boss"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  await sleep(150);
+  check('boss click -> host.openSession', window.__OFFICE_LASTOPEN__ === 'ps-hermes-1' || window.__OFFICE_LASTOPEN__ === 'st-a');
+  /* (h) uniform scale at 300 / 680 / 1240 */
+  {
+    const pv = document.getElementById('preview');
+    const res = [];
+    for (const cls of ['narrow', '', 'wide']) {
+      pv.classList.remove('narrow', 'wide'); if (cls) pv.classList.add(cls);
+      pv.style.transition = 'none'; pv.style.maxWidth = 'none'; pv.style.flex = 'none'; pv.style.width = (cls === 'narrow' ? 300 : cls === 'wide' ? 1240 : 680) + 'px';
+      await until(() => { const f0 = defF(); const st0 = f0.querySelector('.flr-stage'); return Math.abs(W(f0).r.width - st0.clientWidth) < 2; }, 3000);
+      await sleep(100);
+      const f = defF(); const st = f.querySelector('.flr-stage'); const { r, sc } = W(f);
+      const ratio = (r.width) / st.clientWidth;
+      const cols = new Set(Array.from(f.querySelectorAll('img[data-testid="desk"]')).map((el) => Math.round(wbox(f, el).x))).size;
+      const sx = r.width / 1280, sy = r.height / 1024;
+      res.push({ w: pv.clientWidth, ratio, cols, uni: Math.abs(sx - sy) < 0.001, sc });
+    }
+    pv.classList.remove('narrow', 'wide'); pv.style.width = ''; pv.style.maxWidth = ''; pv.style.flex = ''; pv.style.transition = '';
+    await sleep(300);
+    const ok = [300, 680, 1240].every((w, i) => Math.abs(res[i].w - w) <= 3) && res[0].sc < res[1].sc && res[1].sc < res[2].sc && res.every((x) => x.ratio > 0.9 && x.ratio <= 1.0001 && x.cols === 4 && x.uni);
+    check('(h) uniform scale 300/680/1240 -> ' + res.map((x) => x.w + 'px s=' + x.sc.toFixed(3) + ' fill=' + x.ratio.toFixed(2) + ' cols=' + x.cols).join(' ; '), ok);
+  }
+  /* ===== v5.0 addendum: ref agentMachine choreography (i/j/k/l) ===== */
+  let extra = [];
+  const origReq = window.__OFFICE_HOST__.request;
+  window.__OFFICE_HOST__.request = function (method, params) {
+    if (method === 'subagent.list') return origReq(method, params).then((res) => {
+      if (params && params.session_id === 'rt-a' && extra.length) res = { subagents: res.subagents.concat(extra) };
+      return res;
+    });
+    return origReq(method, params);
+  };
+  const mkSa = (id, name, goal) => ({ subagent_id: id, name, goal, status: 'running', tool_count: 1, last_tool: 'read_file', started_at: Math.floor(Date.now() / 1000) - 1, model: 'glm-5.3' });
+  const AG = (id) => { const d = defF(); return d && d.querySelector('[data-testid="agent"][data-id="' + id + '"]'); };
+  const doorOpen = () => { const d = defF(); return !!(d && d.querySelector('.ev-light[data-open="1"]')); };
+  const inLift = (el) => { const x = +el.getAttribute('data-x'), y = +el.getAttribute('data-y'); return x >= 30 && x <= 142 && y >= 90 && y <= 300; };
+  const bossTxt = () => { const d = defF(); const b = d && d.querySelector('[data-testid="bossbubble"]'); return b ? b.textContent : ''; };
+  const agBub = (id) => { const d = defF(); const b = d && d.querySelector('[data-testid="agbubble"][data-for="' + id + '"]'); return b ? b.textContent : ''; };
+  /* (i) arrival */
+  {
+    const seq = []; const note = (k) => { if (!seq.includes(k)) seq.push(k); };
+    extra = [mkSa('sa-7', 'Builder', 'Choreo test goal')];
+    window.__OFFICE_EMIT__('sessions.changed');
+    const t0 = Date.now();
+    while (Date.now() - t0 < 40000) {
+      await sleep(100);
+      const a = AG('sa-7'); if (!a) continue;
+      const ph = a.getAttribute('data-phase');
+      if (doorOpen() && inLift(a)) note('door-open+in-lift');
+      if (seq.includes('door-open+in-lift') && !inLift(a) && !doorOpen()) note('door-closed');
+      if (/Here's your task, Builder!/.test(bossTxt())) note('boss-task');
+      if (seq.includes('boss-task') && /\\uD83D\\uDC4D/.test(agBub('sa-7'))) note('agent-quote');
+      if (ph === 'idle' && Array.from(defF().querySelectorAll('[data-testid="marquee"]')).some((m) => m.textContent.includes('Choreo test goal'))) { note('at-desk'); break; }
+    }
+    const want = ['door-open+in-lift', 'door-closed', 'boss-task', 'agent-quote', 'at-desk'];
+    check('(i) arrival: ' + seq.join(' > '), want.every((k, i) => seq.indexOf(k) === i));
+  }
+  /* (j) departure */
+  {
+    const seq = []; const note = (k) => { if (!seq.includes(k)) seq.push(k); };
+    extra = [];
+    window.__OFFICE_EMIT__('sessions.changed');
+    const t0 = Date.now();
+    while (Date.now() - t0 < 45000) {
+      await sleep(100);
+      const a = AG('sa-7');
+      if (!a) { if (seq.includes('door-closed')) { note('gone'); break; } continue; }
+      const ph = a.getAttribute('data-phase');
+      if (ph === 'conversing' && /\\uD83D\\uDCC4/.test(agBub('sa-7'))) note('agent-completion');
+      if (/Good work, Builder\\. I'll take that\\./.test(bossTxt())) note('boss-goodwork');
+      if (ph === 'walking_to_elevator' && doorOpen()) note('door-open');
+      if ((ph === 'in_elevator' || ph === 'elevator_closing') && inLift(a)) note('in-lift');
+      if (ph === 'elevator_closing' && !doorOpen()) note('door-closed');
+    }
+    const want = ['agent-completion', 'boss-goodwork', 'door-open', 'in-lift', 'door-closed', 'gone'];
+    check('(j) departure: ' + seq.join(' > '), want.every((k, i) => seq.indexOf(k) === i));
+  }
+  /* (k) two arrive together: boss talks to one, the other waits at queue slot A1 (330,930); (l) walk speed 200px/s */
+  {
+    extra = [mkSa('sa-8', 'Alpha', 'Queue alpha'), mkSa('sa-9', 'Beta', 'Queue beta')];
+    window.__OFFICE_EMIT__('sessions.changed');
+    let waitOk = false, twoTalk = false, speeds = [];
+    const t0 = Date.now();
+    while (Date.now() - t0 < 30000 && !(waitOk && speeds.length >= 3)) {
+      await sleep(100);
+      const a8 = AG('sa-8'), a9 = AG('sa-9'); if (!a8 || !a9) continue;
+      const talking = [a8, a9].filter((x) => x.getAttribute('data-phase') === 'conversing');
+      if (talking.length > 1) twoTalk = true;
+      if (talking.length === 1) {
+        const other = talking[0] === a8 ? a9 : a8;
+        if (other.getAttribute('data-phase') === 'in_arrival_queue' && +other.getAttribute('data-x') === 330 && +other.getAttribute('data-y') === 930) waitOk = true;
+      }
+      /* speed: two samples of the rendered capsule inside one walk segment */
+      for (const el of [a8, a9]) {
+        const ms = +el.getAttribute('data-ms'); if (ms < 700 || speeds.length >= 3) continue;
+        const key = el.getAttribute('data-x') + ',' + el.getAttribute('data-y');
+        const f = defF(); const { r, sc } = W(f);
+        const c0 = el.querySelector('[data-testid="capsule"]').getBoundingClientRect(); const t1 = performance.now();
+        await sleep(300);
+        if (el.getAttribute('data-x') + ',' + el.getAttribute('data-y') !== key) continue;
+        const c1 = el.querySelector('[data-testid="capsule"]').getBoundingClientRect(); const t2 = performance.now();
+        const d = Math.hypot(c1.left - c0.left, c1.top - c0.top) / sc;
+        if (d > 5) speeds.push(d / ((t2 - t1) / 1000));
+      }
+    }
+    check('(k) 2 simultaneous arrivals: one conversation at a time, other waits at A1 (330,930) — waitOk=' + waitOk + ' twoTalk=' + twoTalk, waitOk && !twoTalk);
+    const avg = speeds.length ? speeds.reduce((x, y) => x + y, 0) / speeds.length : 0;
+    check('(l) walk speed ' + speeds.map((v) => v.toFixed(0)).join('/') + ' px/s (ref 200 +-20%)', speeds.length >= 2 && speeds.every((v) => v >= 160 && v <= 240));
+    extra = [];
+  }
+  /* ===== v5.4: bubble rides the agent (z1/z2) + legs/arms walk cycle (z3/z4/z5) ===== */
+  {
+    const V54 = mod.__v54;
+    const sc0 = () => W(defF()).sc;
+    const relOf = (a) => { const bb = a.querySelector('[data-testid="agbubble"] .w-bubble'); if (!bb) return null; const r1 = bb.getBoundingClientRect(), r0 = a.getBoundingClientRect(), sc = sc0(); return { dx: (r1.left - r0.left) / sc, dy: (r1.bottom - r0.top) / sc, text: bb.textContent }; };
+    const liveX = (a) => { const f = defF(); const { r, sc } = W(f); return (a.getBoundingClientRect().left - r.left) / sc; };
+    const walkers = ['walking_to_ready', 'walking_to_boss', 'walking_to_desk', 'walking_to_elevator', 'arriving', 'departing'];
+    const track = { arr: { n: 0, spread: 0, detached: 0 }, dep: { n: 0, spread: 0, detached: 0 } };
+    const z3 = { walkAnim: 0, walkLimbs: 0, seatedAnim: -1, cls: 0 };
+    const z4 = { left: 0, leftOk: 0, right: 0, rightOk: 0 };
+    const sample = (bucket, a, firstSeen) => {
+      const ph = a.getAttribute('data-phase');
+      const moving = walkers.indexOf(ph) >= 0 && +a.getAttribute('data-ms') > 0;
+      { const tr = (window.__z4trace = window.__z4trace || []); const k = [ph, a.getAttribute('data-x'), a.getAttribute('data-y'), a.getAttribute('data-ms'), a.getAttribute('data-dir')].join(','); if (!tr.length || tr[tr.length - 1][1] !== k) tr.push([Math.round(performance.now()), k, Math.round(liveX(a))]); }
+      const rel = relOf(a);
+      if (rel && moving) {
+        const k = rel.text;
+        if (!firstSeen[k]) firstSeen[k] = { t: performance.now(), ref: null };
+        const fs = firstSeen[k];
+        if (performance.now() - fs.t > 260) {            /* skip the 0.2s pop-in */
+          if (!fs.ref) fs.ref = rel;
+          const sp = Math.max(Math.abs(rel.dx - fs.ref.dx), Math.abs(rel.dy - fs.ref.dy));
+          bucket.n++; bucket.spread = Math.max(bucket.spread, sp);
+        }
+      }
+      /* a bubble for this agent that is NOT inside the agent element = detached layer (the v5.3 bug) */
+      if (Array.from(defF().querySelectorAll('[data-testid="agbubble"]')).some((b) => !b.closest('[data-testid="agent"]'))) bucket.detached++;
+      if (moving && a.classList.contains('walking')) {
+        z3.cls++;
+        const legs = a.querySelectorAll('[data-testid="agleg"]'), arms = a.querySelectorAll('[data-testid="agarm"]');
+        if (legs.length === 2 && arms.length === 2) z3.walkLimbs++;
+        if (legs[0].getAnimations().length > 0 && arms[0].getAnimations().length > 0) z3.walkAnim++;
+        const tx = +a.getAttribute('data-x'), lx = liveX(a);
+        const dl = a.classList.contains('dir-l');
+        if (tx < lx - 6) { z4.left++; if (dl) z4.leftOk++; else (window.__z4dbg = window.__z4dbg || []).push([ph, tx, +lx.toFixed(1), 'L-miss', a.getAttribute('data-y'), a.getAttribute('data-ms')]); }
+        if (tx > lx + 6) { z4.right++; if (!dl) z4.rightOk++; else (window.__z4dbg = window.__z4dbg || []).push([ph, tx, +lx.toFixed(1), 'R-miss', a.getAttribute('data-y'), a.getAttribute('data-ms')]); }
+      }
+      if (ph === 'idle') { const lg = a.querySelector('[data-testid="agleg"]'); z3.seatedAnim = lg.getAnimations().length + getComputedStyle(lg).display.replace('none', '').length; }
+    };
+    /* arrival */
+    extra = [mkSa('sa-z', 'Walker', 'Walk cycle goal')];
+    window.__OFFICE_EMIT__('sessions.changed');
+    let seen = {}; let t0 = Date.now();
+    while (Date.now() - t0 < 40000) { await sleep(90); const a = AG('sa-z'); if (!a) continue; sample(track.arr, a, seen); if (a.getAttribute('data-phase') === 'idle' && Date.now() - t0 > 3000) { await sleep(400); sample(track.arr, AG('sa-z'), seen); break; } }
+    /* departure */
+    extra = [];
+    window.__OFFICE_EMIT__('sessions.changed');
+    seen = {}; t0 = Date.now();
+    while (Date.now() - t0 < 45000) { await sleep(90); const a = AG('sa-z'); if (!a) { if (Date.now() - t0 > 3000) break; continue; } sample(track.dep, a, seen); }
+    check('(z1) departure: bubble rides the capsule, ' + track.dep.n + ' walking samples, max drift ' + track.dep.spread.toFixed(2) + 'px, detached frames ' + track.dep.detached, track.dep.n >= 5 && track.dep.spread <= 2 && track.dep.detached === 0);
+    check('(z2) arrival/queue: bubble rides the capsule, ' + track.arr.n + ' walking samples, max drift ' + track.arr.spread.toFixed(2) + 'px, detached frames ' + track.arr.detached, track.arr.n >= 3 && track.arr.spread <= 2 && track.arr.detached === 0);
+    const noMoon = V54 && Math.abs(V54.WALK.STRIDE / (V54.WALK.T / 2) - V54.MOVEMENT_SPEED) / V54.MOVEMENT_SPEED < 0.05;
+    check('(z3) walking = 2 legs + 2 arms animating (' + z3.walkAnim + '/' + z3.cls + ' samples), seated legs off (' + z3.seatedAnim + '), stride/half-cycle = ' + (V54 ? (V54.WALK.STRIDE / (V54.WALK.T / 2)).toFixed(0) : '?') + 'px/s (no moonwalk)', z3.cls >= 5 && z3.walkAnim === z3.cls && z3.walkLimbs === z3.cls && z3.seatedAnim === 0 && noMoon);
+    check('(z4) facing: dir-l on leftward legs ' + z4.leftOk + '/' + z4.left + ', none on rightward ' + z4.rightOk + '/' + z4.right, z4.left >= 2 && z4.right >= 1 && z4.leftOk === z4.left && z4.rightOk === z4.right);
+    /* (z5) reduced motion: the pane's anim-off path (used when prefers-reduced-motion) + the @media rule both kill the cycle */
+    {
+      extra = [mkSa('sa-r', 'Still', 'Reduced motion')];
+      window.__OFFICE_EMIT__('sessions.changed');
+      const root = preview.querySelector('.ofc-root');
+      let off = -1, on = -1; const t1 = Date.now();
+      while (Date.now() - t1 < 20000) {
+        await sleep(100);
+        const a = AG('sa-r'); if (!a || !a.classList.contains('walking')) continue;
+        const lg = a.querySelector('[data-testid="agleg"]');
+        on = lg.getAnimations().length;
+        root.classList.add('anim-off'); await sleep(40);
+        off = lg.getAnimations().length + a.querySelector('.ag-bob').getAnimations().length + a.querySelector('[data-testid="agarm"]').getAnimations().length;
+        root.classList.remove('anim-off');
+        break;
+      }
+      let mediaRule = false;
+      for (const ss of Array.from(document.styleSheets)) { let rules = []; try { rules = Array.from(ss.cssRules); } catch (e) { continue; } rules.forEach((r) => { if (r.media && /prefers-reduced-motion/.test(r.media.mediaText) && /ag-leg/.test(r.cssText) && /animation:[^;]*\\bnone\\b[^;]*!important/.test(r.cssText)) mediaRule = true; }); }
+      check('(z5) reduced motion: cycle on=' + on + ' -> anim-off=' + off + ', @media (prefers-reduced-motion) rule=' + mediaRule, on > 0 && off === 0 && mediaRule);
+      extra = [];
+      window.__OFFICE_EMIT__('sessions.changed');
+      await until(() => !AG('sa-r'), 45000);
+    }
+  }
+  window.__OFFICE_HOST__.request = origReq;
+  /* ===== v5.3: per-floor Sessions drawer ===== */
+  {
+    const nowS = Math.floor(Date.now() / 1000);
+    const mk = (p, i, extra) => Object.assign({ id: p + '-s' + i, title: p + ' session ' + i, preview: '', source: 'desktop', started_at: nowS - 3600 * i, last_active: nowS - 30 - 600 * i, message_count: 3 + i, ended_at: null, archived: false }, extra || {});
+    window.__OFFICE_PERSISTED__ = {
+      video: [mk('video', 1), mk('video', 2), mk('video', 3), mk('video', 4, { source: 'tool' }), mk('video', 5, { title: 'Bot Chat' })],
+      default: [mk('default', 1), mk('default', 2)],
+      qa: [],
+    };
+    window.__OFFICE_BOTCHATS__ = { video: 'video-botchat-7', default: 'default-botchat-1' };
+    const FL = (n) => Array.from(preview.querySelectorAll('[data-testid="interior"]')).find((r) => r.getAttribute('data-pname') === n);
+    const chipOf = (n) => { const f = FL(n); return f && f.querySelector('[data-testid="sess-chip"]'); };
+    const drawers = () => preview.querySelectorAll('[data-testid="sess-drawer"]');
+    /* (t) a small "Sessions" chip in all 12 floor headers */
+    {
+      const heads = Array.from(preview.querySelectorAll('[data-testid="flr-h"]'));
+      const chips = heads.map((hd) => hd.querySelector('[data-testid="sess-chip"]')).filter(Boolean);
+      const small = chips.every((c) => { const r = c.getBoundingClientRect(); return r.height <= 18 && /Sessions/.test(c.textContent); });
+      check('(t) "Sessions" chip in every floor header (' + chips.length + '/' + heads.length + '), small (h<=18px)', heads.length === 12 && chips.length === 12 && small && drawers().length === 0);
+    }
+    /* (u) click -> drawer: + New chat, Bot Chat (title lookup), N mock rows (tool source + plumbing title dropped) */
+    {
+      window.__OFFICE_BOTCHAT_Q__ = [];
+      chipOf('video').click();
+      await until(() => { const d = drawers()[0]; return d && d.querySelectorAll('[data-testid="sess-row"]').length > 0 && d.querySelector('[data-testid="sess-bot"]:not([data-missing])'); }, 5000);
+      const d = drawers()[0];
+      const rows = d ? Array.from(d.querySelectorAll('[data-testid="sess-row"]')).map((r) => r.getAttribute('data-id')) : [];
+      const lq = window.__OFFICE_LASTLIST__ || {};
+      const bq = (window.__OFFICE_BOTCHAT_Q__ || []).map((x) => JSON.parse(x)).find((x) => x.profile === 'video');
+      const ok = d && d.getAttribute('data-profile') === 'video' && d.previousElementSibling && d.previousElementSibling.getAttribute('data-testid') === 'flr-h'
+        && d.querySelector('[data-testid="sess-new"]') && /New chat/.test(d.querySelector('[data-testid="sess-new"]').textContent)
+        && rows.join(',') === 'video-s1,video-s2,video-s3'
+        && lq.route === null && lq.opts && lq.opts.profile === 'video' && lq.opts.limit === 30
+        && bq && bq.title === 'Bot Chat' && bq.include_hidden === true;
+      check('(u) drawer under header: + New chat + Bot Chat (session.list title lookup) + ' + rows.length + ' rows [' + rows.join(',') + '] via listPersistedSessions(null,{profile:video,limit:30})', !!ok);
+      /* (v) row click -> host.openSession(id, {profile}) ; Bot Chat row -> the resolved id */
+      const before = window.__OFFICE_RPC__.counts['openSession'] || 0;
+      d.querySelector('[data-testid="sess-row"][data-id="video-s2"]').click();
+      await sleep(80);
+      const o1 = { id: window.__OFFICE_LASTOPEN__, prof: (window.__OFFICE_LASTOPEN_OPTS__ || {}).profile, intent: (window.__OFFICE_LASTOPEN_OPTS__ || {}).intent, closed: drawers().length === 0 };
+      check('(v2) drawer opens sessions BESIDE the current chat: intent=' + o1.intent + ' (stack = new tab unless main is a blank draft)', o1.intent === 'stack');
+      chipOf('video').click();
+      await until(() => drawers()[0] && drawers()[0].querySelector('[data-testid="sess-bot"]:not([data-missing])'), 4000);
+      drawers()[0].querySelector('[data-testid="sess-bot"]').click();
+      await sleep(80);
+      const o2 = { id: window.__OFFICE_LASTOPEN__, prof: (window.__OFFICE_LASTOPEN_OPTS__ || {}).profile };
+      check('(v) row -> openSession(' + o1.id + ', {profile:' + o1.prof + '}), Bot Chat -> ' + o2.id + ', drawer closes', o1.id === 'video-s2' && o1.prof === 'video' && o1.closed && o2.id === 'video-botchat-7' && o2.prof === 'video' && (window.__OFFICE_RPC__.counts['openSession'] || 0) === before + 2);
+    }
+    /* (w) "+ New chat" -> host.newChat(profile) ; default floor maps to 'default' */
+    {
+      chipOf('qa').click();
+      await until(() => drawers()[0] && drawers()[0].querySelector('[data-testid="sess-empty"]'), 4000);
+      const emptyOk = !!(drawers()[0] && /No sessions yet/.test(drawers()[0].textContent) && drawers()[0].querySelector('[data-testid="sess-bot"][data-missing]'));
+      drawers()[0].querySelector('[data-testid="sess-new"]').click();
+      await sleep(150);
+      const nw1 = window.__OFFICE_LASTNEW__ || {};
+      const n1 = nw1.profile && typeof nw1.profile === 'object' ? nw1.profile.profile : nw1.profile;
+      check('(w2) + New chat opens a NEW TAB: newChat(route{local::qa}, {workspaceMode:bots, ownerKey:' + (nw1.opts && nw1.opts.workspaceOwnerKey) + '})', !!(nw1.profile && nw1.profile.connectionId === 'local' && nw1.opts && nw1.opts.workspaceMode === 'bots' && nw1.opts.workspaceOwnerKey === 'bot:local::qa' && window.__OFFICE_SCOPE__ === 'sessions'));
+      const defName = Array.from(preview.querySelectorAll('[data-testid="interior"]'))[0].getAttribute('data-pname');
+      chipOf(defName).click();
+      await until(() => drawers()[0], 3000);
+      drawers()[0].querySelector('[data-testid="sess-new"]').click();
+      await sleep(150);
+      const nw2 = window.__OFFICE_LASTNEW__ || {};
+      const n2 = nw2.profile && typeof nw2.profile === 'object' ? nw2.profile.profile : nw2.profile;
+      check('(w) + New chat -> newChat("' + n1 + '") on qa, newChat("' + n2 + '") on default floor; empty list says "No sessions yet"', n1 === 'qa' && n2 === 'default' && emptyOk && drawers().length === 0);
+    }
+    /* (w3) hidden side-chats (born hidden by + New chat tabs) still list in the drawer; Bot Chat / Group: plumbing do not */
+    {
+      const nowS2 = Date.now() / 1000;
+      window.__OFFICE_HIDDEN__ = { video: [
+        { id: 'an-side-1', title: 'Side chat from office', preview: '', started_at: nowS2 - 60, message_count: 2, source: 'desktop' },
+        { id: 'an-bc', title: 'Bot Chat', preview: '', started_at: nowS2 - 30, message_count: 9, source: 'desktop' },
+        { id: 'an-grp', title: 'Group: Fleet', preview: '', started_at: nowS2 - 20, message_count: 4, source: 'desktop' },
+      ] };
+      chipOf('video').click();
+      await until(() => drawers()[0] && drawers()[0].querySelector('[data-testid="sess-row"][data-id="an-side-1"]'), 4000);
+      const ids = drawers()[0] ? Array.from(drawers()[0].querySelectorAll('[data-testid="sess-row"]')).map((r) => r.getAttribute('data-id')) : [];
+      check('(w3) hidden side-chat listed in drawer [' + ids.join(',') + '], plumbing excluded', ids.indexOf('an-side-1') >= 0 && ids.indexOf('an-bc') < 0 && ids.indexOf('an-grp') < 0);
+      chipOf('video').click();
+      await sleep(80);
+      window.__OFFICE_HIDDEN__ = {};
+    }
+    /* (x) Esc closes; click outside closes; click inside keeps it open */
+    {
+      chipOf('video').click(); await until(() => drawers().length === 1, 3000);
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); await sleep(60);
+      const esc = drawers().length === 0;
+      chipOf('video').click(); await until(() => drawers().length === 1, 3000);
+      drawers()[0].dispatchEvent(new MouseEvent('mousedown', { bubbles: true })); await sleep(60);
+      const inside = drawers().length === 1;
+      FL('video').querySelector('.w-room').dispatchEvent(new MouseEvent('mousedown', { bubbles: true })); await sleep(60);
+      const outside = drawers().length === 0;
+      check('(x) Esc closes=' + esc + ', click inside keeps=' + inside + ', click outside closes=' + outside, esc && inside && outside);
+    }
+    /* (y) only one drawer at a time; the chip toggles */
+    {
+      chipOf('video').click(); await until(() => drawers().length === 1, 3000);
+      chipOf('qa').click(); await sleep(80);
+      const one = drawers().length === 1 && drawers()[0].getAttribute('data-profile') === 'qa';
+      chipOf('qa').click(); await sleep(60);
+      check('(y) one drawer at a time (video -> qa swaps: ' + one + '), chip toggles closed (' + drawers().length + ')', one && drawers().length === 0);
+    }
+    /* polling only while open: no listPersistedSessions calls with every drawer closed */
+    {
+      const c0 = window.__OFFICE_RPC__.counts['listPersistedSessions'] || 0;
+      await sleep(16500);
+      check('drawer data is not polled while closed (' + ((window.__OFFICE_RPC__.counts['listPersistedSessions'] || 0) - c0) + ' calls/16.5s)', (window.__OFFICE_RPC__.counts['listPersistedSessions'] || 0) === c0);
+    }
+  }
+  /* ===== v5.6: OFFICE HIDUP — living decor (prop FX library) + cleaner NPC ===== */
+  {
+    const V56 = mod.__v56;
+    const FLS = () => Array.from(preview.querySelectorAll('[data-testid="interior"]'));
+    const FL = (n) => FLS().find((r) => r.getAttribute('data-pname') === n);
+    const CL = (f) => f && f.querySelector('[data-testid="cleaner"]');
+    if (!V56) check('(c0) __v56 export present', false);
+    else {
+      /* fast timings for the test only (restored after) */
+      const T0 = Object.assign({}, V56.CLEANER_T);
+      Object.assign(V56.CLEANER_T, { speed: 420, cleanMin: 500, cleanMax: 900, pauseMin: 80, pauseMax: 160, cleanChance: 0.75, talkMin: 900, talkMax: 1600, bubble: 1400,
+        restEveryMin: 2600, restEveryMax: 3600, restMin: 1200, restMax: 1800, firstRestMin: 1500, firstRestMax: 3500 });
+      mount();
+      await until(() => FLS().length >= 12 && FLS().every((f) => CL(f)), 8000);
+      /* (c1) one cleaner + one seat on every floor; never an agent, never in a counter, not clickable */
+      {
+        const fl = FLS();
+        const perFloor = fl.map((f) => f.querySelectorAll('[data-testid="cleaner"]').length + '/' + f.querySelectorAll('[data-testid="cleaner-seat"]').length);
+        const asAgent = fl.reduce((n, f) => n + Array.from(f.querySelectorAll('[data-testid="agent"]')).filter((a) => a.querySelector('[data-testid="cleaner"]') || a.matches('[data-testid="cleaner"]')).length, 0);
+        const d = defF(); const subTxt = ((d.querySelector('[data-testid="subcount"]') || {}).textContent || '');
+        const agentsDef = d.querySelectorAll('[data-testid="agent"]').length;
+        const foreignCnt = fl.filter((f) => f.getAttribute('data-pname') !== 'default' && f.querySelector('[data-testid="subcount"]')).length;
+        const o0 = window.__OFFICE_RPC__.counts['openSession'] || 0; const lo = window.__OFFICE_LASTOPEN__;
+        const body = d.querySelector('[data-testid="cleaner-body"]');
+        body.dispatchEvent(new MouseEvent('click', { bubbles: true })); await sleep(120);
+        const noOpen = (window.__OFFICE_RPC__.counts['openSession'] || 0) === o0 && window.__OFFICE_LASTOPEN__ === lo;
+        const tip = body.getAttribute('title') || '';
+        check('(c1) 1 cleaner + 1 seat on each of ' + fl.length + ' floors [' + Array.from(new Set(perFloor)).join(',') + '], not an agent (' + asAgent + '), header "' + subTxt + '" = agents ' + agentsDef + ', foreign counters ' + foreignCnt + ', click opens nothing, tooltip "' + tip + '"',
+          fl.length === 12 && perFloor.every((x) => x === '1/1') && asAgent === 0 && subTxt === agentsDef + ' subagents' && foreignCnt === 0 && noOpen && tip.length > 0);
+      }
+      /* (c9) SIZE FIX: cleaner + seat are agent-sized (bbox height 0.85-1.2x agent capsule+legs, seat ~ agent chair) */
+      {
+        const d = defF(); const c = CL(d); const body = c.querySelector('[data-testid="cleaner-body"]');
+        const ag = Array.from(d.querySelectorAll('[data-testid="agent"]')).find((a) => a.querySelector('.ag-leg') && getComputedStyle(a.querySelector('.ag-leg')).display !== 'none');
+        let agH = 98, src = 'spec';
+        if (ag) { const cr = ag.querySelector('[data-testid="capsule"]').getBoundingClientRect(); const lr = Array.from(ag.querySelectorAll('.ag-leg i')).map((e) => e.getBoundingClientRect().bottom); if (lr.length) { agH = Math.max.apply(null, lr) - cr.top; src = 'measured'; } }
+        const sc = d.querySelector('[data-testid="world"]').getBoundingClientRect().width / 1280;
+        agH = src === 'measured' ? agH / sc : agH;
+        const art = body.querySelector('svg, img'); const seatArt = d.querySelector('[data-testid="cleaner-seat"] svg, [data-testid="cleaner-seat"] img');
+        const clH = art.getBoundingClientRect().height / sc;   /* the drawn art, not just the box (a 60x72 svg in an 84x101 box once slipped past) */
+        const seatH = seatArt.getBoundingClientRect().height / sc;
+        const r1 = clH / agH, r2 = seatH / 100.8;
+        const px = getComputedStyle(body.querySelector('img') || body).imageRendering;
+        check('(c9) cleaner height ' + clH.toFixed(0) + ' / agent ' + agH.toFixed(0) + ' (' + src + ') = ' + r1.toFixed(2) + ', seat ' + seatH.toFixed(0) + ' / chair 101 = ' + r2.toFixed(2) + ', sprite=' + c.getAttribute('data-sprite') + ' rendering ' + px,
+          r1 >= 0.85 && r1 <= 1.2 && r2 >= 0.85 && r2 <= 1.2 && (c.getAttribute('data-sprite') !== 'theme' || px === 'pixelated'));
+      }
+      /* (c11) v5.6 C/D integration: every themed floor shows ITS designer cleaner (+ seat), unthemed floors the cleanerRef janitor,
+         sprite fps honoured, frames decode, new propFx types (glint/type/flip/count) rendered, bubble lines come from the floor's theme */
+      {
+        const V52x = mod.__v52; const TR = V52x.THEME_KEYS; const fl = FLS(); const bad = [];
+        let themed = 0, ref = 0;
+        fl.forEach((f) => {
+          const pn = f.getAttribute('data-pname'); const key = pn === 'default' || f === defF() ? 'default' : pn;
+          const c = CL(f); const th = TR.indexOf(key) >= 0 ? V52x.themeFor(key) : null;
+          const want = th ? th.cleaner : null;
+          const img = c.querySelector('[data-testid="cleaner-body"] img'); const seatImg = f.querySelector('[data-testid="cleaner-seat"] img');
+          if (want) {
+            themed++;
+            const srcs = want.walk.concat(want.clean, want.sit);
+            if (c.getAttribute('data-sprite') !== 'theme' || c.getAttribute('data-name') !== want.name || !img || srcs.indexOf(img.getAttribute('src')) < 0 || !seatImg || seatImg.getAttribute('src') !== want.seat.src) bad.push(key + ':theme');
+            if (!Array.from(c.classList).some((k) => k.indexOf('mv-') === 0)) bad.push(key + ':move[' + c.className + ']');   /* classList check: the suite is a template string, a single-escaped word-boundary regex turns into a backspace */
+          } else {
+            ref++;
+            if (c.getAttribute('data-sprite') !== 'theme' || !/Janitor/.test(c.getAttribute('data-name') || '') || !seatImg) bad.push(pn + ':ref');
+          }
+        });
+        /* fps: a 4-frame walk at 8 fps = 0.5 s cycle on the rendered frames */
+        const all = fl.map(CL); let fpsOk = 0, fpsN = 0;
+        all.forEach((c) => { const im = c.querySelector('.cl-flip > img.fx-frame'); if (!im) return; fpsN++; const d = parseFloat(im.style.getPropertyValue('--fdur'));
+          const pose = c.getAttribute('data-pose'); const want = pose === 'sit' ? 2 / 1.5 : pose === 'clean' ? 4 / 6 : 4 / 8; if (Math.abs(d - want) < 0.02) fpsOk++; });
+        /* all cleaner sprites decode */
+        const csrc = new Set(); TR.forEach((k) => { const cl = V52x.themeFor(k).cleaner; if (cl) cl.walk.concat(cl.clean, cl.sit, [cl.seat.src]).forEach((x) => csrc.add(x)); });
+        let dFail = 0; await Promise.all(Array.from(csrc).map((u) => new Promise((res) => { const im = new Image(); im.onload = () => { if (im.naturalWidth !== 160) dFail++; res(); }; im.onerror = () => { dFail++; res(); }; im.src = u; })));
+        /* new fx types present on the floors whose theme asks for them */
+        const typesSeen = new Set(); fl.forEach((f) => f.querySelectorAll('[data-testid="prop"]').forEach((p) => (p.getAttribute('data-fx') || '').split(',').forEach((t) => typesSeen.add(t))));
+        /* v5.8b: expected types are DERIVED from the live themes (fxList over every themed prop slot) instead of a fixed list —
+           flip/count/scan were only requested by the retired pm/growth/analyst floors; the renderers stay for future themes.
+           Slots whose propFx is anim-only (CityWindow panels) are drawn by FloorAnim frames — covered by (c12)/(t4), not here */
+        const wantSet = new Set(); TR.forEach((k) => { const th = V52x.themeFor(k); Object.keys((th && th.props) || {}).filter((slot) => { const pf = th.propFx && th.propFx[slot]; const a = pf == null ? [] : Array.isArray(pf) ? pf : [pf]; return !(a.length && a.every((f) => f && f.type === 'anim')); }).forEach((slot) => V56.fxList(th, slot).forEach((f) => { if (f && f.type !== 'frames') wantSet.add(f.type); })); });
+        /* independent guard (reviewer v5.8b): the types the 6 live themes' propFx hand-author, NOT computed by the SUT's fxList,
+           so a wrong slot->type mapping inside fxList still fails here; the derived set only adds anything new themes request */
+        const AUTHORED = ['glow', 'float', 'sway', 'leds', 'flicker', 'pulse', 'glint', 'type', 'paper', 'spin'];
+        const wantTypes = Array.from(new Set(AUTHORED.concat(Array.from(wantSet))));
+        const miss = wantTypes.filter((t) => !typesSeen.has(t));
+        const nodes = ['glint', 'type', 'flip', 'count'].filter((t) => wantTypes.indexOf(t) >= 0 && !preview.querySelector('.fx[data-fx="' + t + '"]'));
+        /* lines: the theme's own pool (coder), not the generic fallback */
+        const lc = V56.cleanerLines('coder'), lf = V56.cleanerLines('orchestrator-unthemed');
+        const linesOk = lc.idle.length >= 12 && lc.idle[0] !== lf.idle[0] && lc.to_agent.length >= 6;
+        check('(c11) integration: ' + themed + ' themed floors w/ own sprite+seat, ' + ref + ' ref-janitor floors' + (bad.length ? ' bad=' + bad.join(',') : '') + ', fps ' + fpsOk + '/' + fpsN + ', ' + csrc.size + ' cleaner PNGs decode (fail ' + dFail + '), fx types want [' + wantTypes.join(',') + '] missing [' + miss.join(',') + '] nodes missing [' + nodes.join(',') + '], coder lines own pool ' + linesOk,
+          bad.length === 0 && themed === fl.filter((f) => TR.indexOf(f === defF() ? 'default' : f.getAttribute('data-pname')) >= 0).length && themed === TR.length && TR.length >= 6 && ref >= 1 && fpsN >= 1 && fpsOk === fpsN && csrc.size >= TR.length * 9 /* 4 walk + 4 clean + 2 sit + seat per theme, identical frames dedupe: v5.8 had 107 srcs / 11 themes, bound was 100 */ && dFail === 0 && !miss.length && !nodes.length && linesOk);
+      }
+      /* (c2) seat + corridors never touch agent traffic (pure geometry over every cleaner route) */
+      {
+        const S = V56.CL_SEAT; const bad = [];
+        const deskRects = []; for (let i = 0; i < 8; i++) { const o = V5.deskOrigin(i); deskRects.push([o.x - 78, o.y - 30, o.x + 78, o.y + 110]); }
+        const inRect = (p, r) => p.x > r[0] && p.x < r[2] && p.y > r[1] && p.y < r[3];
+        const blocked = (p) => deskRects.some((r) => inRect(p, r)) || (p.x < 200) || (p.y > 840) || (p.x > 1180 && p.y > 440) || inRect(p, [640 - 186, 850, 640 + 186, 1030]);
+        if ([128, 384, 640, 896, 1152].some((x) => Math.abs(S.x - x) < 50)) bad.push('seat-on-lane');
+        if (blocked(S)) bad.push('seat-blocked');
+        const pts = V56.CL_WAYPOINTS.concat([S]); let segs = 0;
+        pts.forEach((a) => pts.forEach((b) => {
+          if (a === b) return;
+          let prev = a;
+          V56.cleanerRoute(a, b).forEach((q) => {
+            segs++;
+            if (prev.x !== q.x && prev.y !== q.y) bad.push('diag');
+            for (let k = 0; k <= 20; k++) { const p = { x: prev.x + (q.x - prev.x) * k / 20, y: prev.y + (q.y - prev.y) * k / 20 }; if (blocked(p)) { bad.push('hit@' + Math.round(p.x) + ',' + Math.round(p.y)); break; } }
+            prev = q;
+          });
+          if (prev.x !== b.x || prev.y !== b.y) bad.push('noarrive');
+        }));
+        check('(c2) seat (' + S.x + ',' + S.y + ') off lanes/queue/lift/rug, ' + segs + ' route segments axis-aligned + clear of desks/chairs/queue/rug' + (bad.length ? ' bad=' + Array.from(new Set(bad)).slice(0, 5).join(',') : ''), bad.length === 0);
+      }
+      /* (c3) cycle roam -> clean -> rest (seated ON the seat), bubbles talk; z = y; bubble rides the body */
+      {
+        const seq = {}; let legsStill = 0, restOnSeat = 0, restOff = 0, zBad = 0, zN = 0, bubbles = 0, bubAttached = 0, drift = 0, walkSamples = 0, fxSeen = 0, cats = new Set();
+        const t0 = Date.now();
+        while (Date.now() - t0 < 14000) {
+          await sleep(90);
+          FLS().forEach((f) => {
+            const c = CL(f); if (!c) return;
+            const n = f.getAttribute('data-pname'); const ph = c.getAttribute('data-phase');
+            const L = seq[n] = seq[n] || []; if (L[L.length - 1] !== ph) L.push(ph);
+            const b = c.querySelector('[data-testid="cleaner-body"]');
+            const y = +c.getAttribute('data-y'); zN++; if (+b.style.zIndex !== 10 + Math.round(y)) zBad++;
+            if (ph === 'rest' && c.getAttribute('data-ms') === '0' && c.getAttribute('data-sprite') === 'theme' && c.classList.contains('dir-l')) restOff++;   /* sprite sit must stay unflipped over its seat */
+            if (ph === 'rest' && c.getAttribute('data-ms') === '0') { if (+c.getAttribute('data-x') === V56.CL_SEAT.x && y === V56.CL_SEAT.y) restOnSeat++; else restOff++; }
+            if (ph === 'clean' && c.querySelector('[data-testid="cleaner-fx"]')) fxSeen++;
+            if (c.classList.contains('cl-walk') && c.getAttribute('data-ms') === '0') legsStill++;
+            const bb = f.querySelector('[data-testid="clbubble"]');
+            if (bb) {
+              bubbles++; cats.add(bb.getAttribute('data-cat'));
+              if (bb.closest('[data-testid="cleaner"]') === c) bubAttached++;
+              if (c.classList.contains('cl-walk')) {
+                walkSamples++;
+                const br = bb.querySelector('.w-bubble').getBoundingClientRect(), cr = b.getBoundingClientRect();
+                const k = 'dx' + n + '|' + bb.getAttribute('data-bid'); const dx = (br.left + br.width / 2) - (cr.left + cr.width / 2);   /* per bubble: its side is picked once, when it is said */
+                if (seq[k] != null) drift = Math.max(drift, Math.abs(dx - seq[k])); seq[k] = dx;
+              }
+            }
+          });
+        }
+        const names = Object.keys(seq).filter((k) => k.indexOf('dx') !== 0);   /* dx keys are 'dx<floor>|<text>' */
+        /* off-screen floors are paused by design (c4) -> the full cycle is required on every VISIBLE floor */
+        const vis = names.filter((n) => !FL(n).querySelector('[data-testid="world"]').classList.contains('offscreen'));
+        const full = vis.filter((n) => { const L = seq[n]; return ['roam', 'clean', 'to_seat', 'rest'].every((ph) => L.indexOf(ph) >= 0) && L.indexOf('rest', L.indexOf('to_seat')) > L.indexOf('to_seat'); });   /* all 4 phases + walk-to-seat then sit; order of clean vs first rest is random by design */
+        check('(c3) cycle roam > clean > to_seat > rest on ' + full.length + '/' + vis.length + ' visible floors (e.g. ' + (seq[full[0]] || []).slice(0, 7).join('>') + ')' + vis.filter((n) => full.indexOf(n) < 0).map((n) => ' MISS ' + n + '=' + seq[n].slice(0, 12).join('>')).join('') + ', clean fx ' + fxSeen, vis.length >= 1 && full.length === vis.length && fxSeen > 0);
+        check('(c3) resting = seated on its own seat (' + restOnSeat + ' samples, off-seat ' + restOff + ')', restOnSeat > 20 && restOff === 0);
+        check('(c3) walk cycle only while moving (cl-walk with walkMs 0: ' + legsStill + ')', legsStill === 0);
+        check('(c3) z-order = 10 + y (' + (zN - zBad) + '/' + zN + ')', zN > 100 && zBad === 0);
+        check('(c3) talk: ' + bubbles + ' bubble samples [' + Array.from(cats).join(',') + '], all children of the cleaner (' + bubAttached + '), drift while walking ' + drift.toFixed(2) + 'px over ' + walkSamples, bubbles > 5 && bubAttached === bubbles && drift < 1);
+      }
+      /* (c4) paused while not visible: an off-screen floor's cleaner freezes, an on-screen one keeps moving */
+      {
+        await sleep(1200);
+        const off = FLS().filter((f) => f.querySelector('[data-testid="world"]').classList.contains('offscreen'));
+        const on = FLS().filter((f) => !f.querySelector('[data-testid="world"]').classList.contains('offscreen'));
+        const pos = (f) => { const c = CL(f); return c.getAttribute('data-x') + ',' + c.getAttribute('data-y') + ',' + c.getAttribute('data-phase'); };
+        const a0 = off.map(pos), b0 = on.map(pos);
+        const onMoves = new Set(); let offChanged = 0;
+        const t0 = Date.now();
+        while (Date.now() - t0 < 5000) { await sleep(150); off.forEach((f, i) => { if (pos(f) !== a0[i]) offChanged++; }); on.forEach((f, i) => { if (pos(f) !== b0[i]) onMoves.add(i); }); }
+        const decorPaused = off.length ? getComputedStyle(off[0].querySelector('.fx-halo')).animationPlayState : 'n/a';
+        check('(c4) pause when not visible: ' + off.length + ' off-screen floors frozen (changes ' + offChanged + ', decor ' + decorPaused + '), ' + onMoves.size + '/' + on.length + ' visible floors moved', off.length >= 1 && offChanged === 0 && decorPaused === 'paused' && on.length >= 1 && onMoves.size >= 1);
+      }
+      /* (c5) prop FX library: effect picked per slot from the theme, ref look only on unthemed/ref slots */
+      {
+        const slotFx = (n, s) => { const f = FL(n); const e = f && f.querySelector('[data-slot="' + s + '"]'); return e ? e.getAttribute('data-fx') : 'missing'; };
+        const refOk = slotFx('orchestrator', 'WaterCooler') === 'bubbles' && slotFx('orchestrator', 'CoffeeMachine') === 'steam' && /paper/.test(slotFx('orchestrator', 'Printer')) && slotFx('orchestrator', 'Plant') === 'sway';
+        const coolers = FLS().map((f) => slotFx(f.getAttribute('data-pname'), 'WaterCooler'));
+        const themedCoolers = FLS().filter((f) => V52.themeFor(f.getAttribute('data-pname') === 'default' ? 'default' : f.getAttribute('data-pname')) && V52.themeFor(f.getAttribute('data-pname') === 'default' ? 'default' : f.getAttribute('data-pname')).props.WaterCooler)
+          .map((f) => slotFx(f.getAttribute('data-pname'), 'WaterCooler'));
+        const fake = { name: 'x', props: { WaterCooler: { rel: 'sprites/server_rack.png' }, Plant: { rel: 'sprites/extinguisher.png' } }, propFx: { WaterCooler: { type: 'leds', color: '#0ff' }, Plant: null, CoffeeMachine: [{ type: 'bogus' }] } };
+        const u1 = V56.fxList(fake, 'WaterCooler').map((f) => f.type).join(','), u2 = V56.fxList(fake, 'Plant').length, u3 = V56.fxList(fake, 'CoffeeMachine').map((f) => f.type).join(',');
+        const u4 = V56.fxList({ name: 'y', props: { WaterCooler: { rel: 'sprites/server_rack.png' } }, propFx: null }, 'WaterCooler').map((f) => f.type).join(',');
+        const leds = defF().querySelectorAll('[data-slot] .fx-led').length;
+        check('(c5) prop FX per theme: ref floor cooler/coffee/printer/plant = bubbles/steam/paper/sway ' + refOk + ', themed coolers [' + themedCoolers.join('|') + '] never ref bubbles, propFx override -> ' + u1 + ' / null -> ' + u2 + ' fx / unknown type -> "' + u3 + '" (ref), sprite default server_rack -> ' + u4 + ', MEGATRON slot overlays ' + leds + ' leds',
+          refOk && themedCoolers.length === V52.THEME_KEYS.length && V52.THEME_KEYS.length >= 6 && themedCoolers.every((x) => x !== 'bubbles') && u1 === 'leds' && u2 === 0 && u3 === 'steam' && u4 === 'leds' && new Set(coolers).size >= 4);
+      }
+      /* (c6) per-floor desync + wall clock seconds hand really ticks */
+      {
+        const fds = new Set(FLS().map((f) => f.querySelector('[data-testid="world"]').style.getPropertyValue('--fd')));
+        const ck = () => { const e = defF().querySelector('[data-sec]'); return e ? e.getAttribute('data-sec') : null; };
+        const s0 = ck(); const t0 = Date.now(); let s1 = s0;
+        while (Date.now() - t0 < 2600 && s1 === s0) { await sleep(100); s1 = ck(); }
+        const anims = Array.from(defF().querySelectorAll('.fx, .prop-art, .eom-ph')).reduce((n, e) => n + e.getAnimations().length, 0);
+        check('(c6) ' + fds.size + ' distinct per-floor anim offsets over 12 floors, clock second ' + s0 + ' -> ' + s1 + ', ' + anims + ' decor animations running on 1F', fds.size >= 10 && s0 !== null && s1 !== s0 && anims > 10);
+      }
+      /* (c7) animations off / reduced motion: every decor animation stops and every cleaner sits still on its seat */
+      {
+        const root = preview.querySelector('.ofc-root');
+        const gear = Array.from(preview.querySelectorAll('button')).find((b) => b.textContent.trim() === '\\u2699');
+        gear.dispatchEvent(new MouseEvent('click', { bubbles: true })); await sleep(120);
+        preview.querySelector('.settings input[type="checkbox"]').click();
+        await until(() => FLS().every((f) => { const c = CL(f); return c && c.getAttribute('data-phase') === 'rest' && c.getAttribute('data-ms') === '0'; }), 3000);
+        await sleep(300);
+        const sits = FLS().filter((f) => { const c = CL(f); return c.getAttribute('data-phase') === 'rest' && +c.getAttribute('data-x') === V56.CL_SEAT.x && +c.getAttribute('data-y') === V56.CL_SEAT.y; }).length;
+        const p0 = FLS().map((f) => CL(f).getAttribute('data-x') + ',' + CL(f).getAttribute('data-y')).join('|');
+        await sleep(2500);
+        const p1 = FLS().map((f) => CL(f).getAttribute('data-x') + ',' + CL(f).getAttribute('data-y')).join('|');
+        const left = Array.from(root.querySelectorAll('.fx, .prop-art, .eom-ph, .w-cleaner, .w-cleaner *')).reduce((n, e) => n + e.getAnimations().length, 0);
+        const bubs = preview.querySelectorAll('[data-testid="clbubble"]').length;
+        let mediaRule = false;
+        for (const ss of Array.from(document.styleSheets)) { let rules = []; try { rules = Array.from(ss.cssRules); } catch (e) { continue; } rules.forEach((r) => { if (r.media && /prefers-reduced-motion/.test(r.media.mediaText) && /w-cleaner/.test(r.cssText) && /\\.fx\\b/.test(r.cssText)) mediaRule = true; }); }
+        check('(c7) anim-off: ' + sits + '/12 cleaners seated on their seat, still over 2.5s ' + (p0 === p1) + ', ' + left + ' decor/cleaner animations left, ' + bubs + ' bubbles, @media reduced-motion rule ' + mediaRule,
+          root.classList.contains('anim-off') && sits === 12 && p0 === p1 && left === 0 && bubs === 0 && mediaRule);
+        preview.querySelector('.settings input[type="checkbox"]').click();
+        gear.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        const moved = await until(() => FLS().some((f) => CL(f).getAttribute('data-phase') !== 'rest'), 4000);
+        check('(c7) animations back on -> cleaners leave the seat again', !!moved && !root.classList.contains('anim-off'));
+      }
+      /* (c10) v5.6b frame-player: anim.json spec -> panel + EoM portrait flip frames (one timer per floor), generic panel fx gone,
+         off-screen floors frozen, anim-off -> frame 0. Uses the embedded ANIM_RAW, or (before 'ANIM READY') the designer's
+         themes/anim/_parts/default.json injected for this test only. */
+      if (V56.ANIM_STATE) {
+        const AS = V56.ANIM_STATE; const saved = { raw: AS.raw, assets: AS.assets, gen: AS.gen || 0 };
+        let src = 'embedded';
+        if (!AS.raw || !AS.raw.default) {
+          const j = await fetch('../themes/anim/_parts/default.json').then((r) => (r.ok ? r.json() : null)).catch(() => null);
+          if (j) {
+            const assets = Object.assign({}, AS.assets);
+            [j.panel, j.eom].forEach((b) => b && b.frames.forEach((rel) => { assets[rel] = '../themes/' + rel; }));
+            AS.raw = { default: { panel: j.panel, eom: Object.assign({}, j.eom, { idleHoldMs: 0 }) } }; AS.assets = assets; src = '_parts/default.json';
+          }
+        }
+        AS.gen = saved.gen + 1;
+        mount();
+        await until(() => FLS().length >= 12 && defF().querySelector('[data-anim="panel"]'), 8000);
+        defF().scrollIntoView({ block: 'start' }); await sleep(300);
+        const d = defF(); const pi = d.querySelector('[data-anim="panel"]'), ei = d.querySelector('[data-anim="eom"]');
+        const seenP = new Set(), seenE = new Set(); const t0 = Date.now();
+        while (pi && Date.now() - t0 < 3200) { seenP.add(pi.getAttribute('data-frame')); if (ei) seenE.add(ei.getAttribute('data-frame')); await sleep(70); }
+        const citySlots = d.querySelectorAll('[data-slot="CityWindow"]');
+        const genericOnPanel = Array.from(citySlots).some((c) => c.querySelector('.fx-scan, .fx-shine'));
+        const others = FLS().filter((f) => f !== d && !f.querySelector('[data-anim]')).length;
+        const off = FLS().find((f) => f !== d && f.querySelector('[data-testid="world"]').classList.contains('offscreen') && f.querySelector('[data-anim]'));
+        let offFrozen = 'n/a';
+        if (off) { const a0 = off.querySelector('[data-anim="panel"]').getAttribute('data-frame'); await sleep(1200); offFrozen = String(a0 === off.querySelector('[data-anim="panel"]').getAttribute('data-frame')); }
+        check('(c10) frame-player [' + src + ']: 1F panel ' + seenP.size + ' frames + portrait ' + seenE.size + ' frames in 3.2s, ' + citySlots.length + ' CityWindow slot, generic scan/shine on it ' + genericOnPanel + ', floors w/o anim keep generic ' + others + ', off-screen frozen ' + offFrozen,
+          !!pi && seenP.size >= 8 && (!ei || seenE.size >= 3) && citySlots.length === 1 && !genericOnPanel && offFrozen !== 'false');
+        const root = preview.querySelector('.ofc-root');
+        const gear = Array.from(preview.querySelectorAll('button')).find((b) => b.textContent.trim() === '\\u2699');
+        gear.dispatchEvent(new MouseEvent('click', { bubbles: true })); await sleep(120);
+        preview.querySelector('.settings input[type="checkbox"]').click();
+        await sleep(900);
+        const f0 = pi && pi.getAttribute('data-frame'); await sleep(900); const f1 = pi && pi.getAttribute('data-frame');
+        check('(c10) anim-off -> panel frame ' + f0 + ' -> ' + f1 + ' (frame 0, still)', root.classList.contains('anim-off') && f0 === '0' && f1 === '0');
+        preview.querySelector('.settings input[type="checkbox"]').click();
+        gear.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        AS.raw = saved.raw; AS.assets = saved.assets; AS.gen = saved.gen + 2;
+        mount();
+        await until(() => FLS().length >= 12 && FLS().every((f) => CL(f)), 8000);
+      }
+      /* (c8) cleaners add no polling: every RPC method called during the cleaner window is one the office already used */
+      {
+        const known = new Set(['session.active_list', 'profiles.list', 'session.list', 'subagent.list', 'session.children', 'subagent.tail', 'listPersistedSessions', 'openSession', 'newChat', 'session.activity']); /* v5.7b: session.activity is the tool-bubble poll, not decor */
+        const odd = Object.keys(window.__OFFICE_RPC__.counts).filter((k) => !known.has(k));
+        check('(c8) 0 new RPC methods from decor/cleaners (' + (odd.join(',') || 'none') + ')', odd.length === 0);
+      }
+      Object.assign(V56.CLEANER_T, T0);
+      mount();
+      await until(() => FLS().length >= 12, 8000);
+      await sleep(400);
+    }
+  }
+  /* ===== v5.2: per-floor themes ===== */
+  {
+    const THEME_KEYS = (V52 && V52.THEME_KEYS) || [];
+    /* v5.8b: the base fixture already carries every live themed profile (default, coder, designer, content, video, qa) */
+    window.__OFFICE_EXTRA_BOTS__ = null;
+    mount();
+    await until(() => preview.querySelectorAll('[data-testid="interior"]').length >= 12, 8000);
+    await sleep(600);
+    const floors = Array.from(preview.querySelectorAll('[data-testid="interior"]'));
+    /* (p) every themed floor renders ITS theme's desk/elevatorDoor/floorTile/wallTexture */
+    let ok = 0; const bad = [];
+    THEME_KEYS.forEach((k) => {
+      const f = floors.find((x) => x.getAttribute('data-pname') === k); const th = V52.themeFor(k);
+      if (!f || !th) { bad.push(k + ':missing'); return; }
+      const want = th.raw; const assetOf = (rel) => th && (rel === want.desk ? th.desk : rel === want.elevatorDoor ? th.elevatorDoor : null);
+      const desks = Array.from(f.querySelectorAll('[data-testid="desk"]'));
+      const doors = Array.from(f.querySelectorAll('[data-testid="evdoor"]'));
+      const tile = f.querySelector('[data-testid="floortile"]'); const wall = f.querySelector('[data-testid="wall"]');
+      const good = desks.length === 8 && desks.every((d) => d.getAttribute('data-theme-src') === want.desk && d.getAttribute('src') === th.desk)
+        && doors.length === 2 && doors.every((d) => d.getAttribute('data-theme-src') === want.elevatorDoor && d.getAttribute('src') === th.elevatorDoor)
+        && tile.getAttribute('data-theme-src') === want.floorTile && getComputedStyle(tile).backgroundImage.indexOf('svg') > 0
+        && wall.getAttribute('data-theme-src') === want.wallTexture && getComputedStyle(wall).backgroundImage.indexOf('data:image/png') > 0
+        && getComputedStyle(desks[0]).imageRendering === 'pixelated';
+      if (good) ok++; else bad.push(k);
+    });
+    check('(p) themed floors render their own desk/elevatorDoor/floorTile/wallTexture, pixelated (' + ok + '/' + THEME_KEYS.length + ')' + (bad.length ? ' bad=' + bad.join(',') : ''), ok === THEME_KEYS.length && ['default', 'coder', 'designer', 'content', 'video', 'qa'].every((k) => THEME_KEYS.indexOf(k) >= 0));
+    /* (q) profiles without a theme fall back to the v5 ref sprites + white stroke */
+    const unthemed = floors.filter((f) => THEME_KEYS.indexOf(f.getAttribute('data-pname')) < 0);
+    const refDesk = (floors.find((f) => f.getAttribute('data-pname') === 'orchestrator') || floors[0]).querySelector('[data-testid="desk"]');
+    const qOk = unthemed.length >= 2 && unthemed.every((f) => {
+      const d = f.querySelector('[data-testid="desk"]'); const r = f.querySelector('[data-testid="capsule"] rect');
+      return d.getAttribute('data-theme-src') === 'ref' && f.querySelector('[data-testid="evdoor"]').getAttribute('data-theme-src') === 'ref'
+        && f.querySelector('[data-testid="floortile"]').getAttribute('data-theme-src') === 'ref' && r && r.getAttribute('stroke') === '#fff'
+        && !f.querySelector('.w-glow') && d.getAttribute('src') === refDesk.getAttribute('src');
+    });
+    check('(q) no theme -> ref fallback (' + unthemed.map((f) => f.getAttribute('data-pname')).join(',') + ')', qOk);
+    /* (c12) v5.6b ANIM integration: every themed floor with an anim.json entry flips BOTH its panel and its EoM portrait
+       >= 3 src changes in 3s (portrait: counted from its first move, because anim.json idleHoldMs ~2.5s holds frame 0 by design),
+       one anim layer per floor, generic scan/shine gone from that panel, breathe off under the animated portrait,
+       and every embedded anim frame decodes at the designer's size (panel 400x320, eom 168x168). */
+    {
+      const AS = mod.__v56 && mod.__v56.ANIM_STATE;
+      const keys = AS && AS.raw ? Object.keys(AS.raw) : [];
+      const res = []; const bad = [];
+      for (const k of keys) {
+        const f = floors.find((x) => x.getAttribute('data-pname') === k);
+        if (!f) { bad.push(k + ':nofloor'); continue; }
+        f.scrollIntoView({ block: 'start' }); await sleep(250);
+        const cur = () => preview.querySelector('[data-testid="interior"][data-pname="' + k + '"]');
+        const pi = () => cur().querySelector('[data-anim="panel"]'), ei = () => cur().querySelector('[data-anim="eom"]');
+        if (!pi() || !ei()) { bad.push(k + ':noimg'); continue; }
+        const layers = cur().querySelectorAll('.anim-layer').length;
+        const slot = cur().querySelectorAll('[data-slot="CityWindow"]');
+        const generic = Array.from(slot).some((c) => c.querySelector('.fx-scan, .fx-shine, .prop-art'));
+        const ph = cur().querySelector('.eom-animated .eom-ph'); const breathe = ph ? getComputedStyle(ph).animationName : 'noeom';
+        /* portrait: wait for its first move out of the hold (bounded), then count 3s */
+        const e0 = ei().getAttribute('src'); const tw = Date.now();
+        while (Date.now() - tw < 3800 && ei().getAttribute('src') === e0) await sleep(40);
+        let pc = 0, ec = 0, lp = pi().getAttribute('src'), le = ei().getAttribute('src'); const t0 = Date.now();
+        while (Date.now() - t0 < 3000) { await sleep(40); const a = pi().getAttribute('src'), b2 = ei().getAttribute('src'); if (a !== lp) { pc++; lp = a; } if (b2 !== le) { ec++; le = b2; } }
+        res.push(k + ':' + pc + '/' + ec);
+        if (!(pc >= 3 && ec >= 3 && layers === 1 && slot.length === 1 && !generic && breathe === 'none')) bad.push(k + '(p' + pc + ' e' + ec + ' L' + layers + ' s' + slot.length + ' g' + generic + ' br' + breathe + ')');
+      }
+      /* every embedded frame decodes at its declared size */
+      let decFail = 0, sizeBad = 0, nfr = 0;
+      const jobs = [];
+      keys.forEach((k) => ['panel', 'eom'].forEach((part) => ((AS.raw[k][part] || {}).frames || []).forEach((rel) => {
+        nfr++; const u = AS.assets[rel]; const want = part === 'panel' ? [400, 320] : [168, 168];
+        jobs.push(new Promise((ok) => { if (!u) { decFail++; ok(); return; } const im = new Image(); im.onload = () => { if (im.naturalWidth !== want[0] || im.naturalHeight !== want[1]) sizeBad++; ok(); }; im.onerror = () => { decFail++; ok(); }; im.src = u; }));
+      })));
+      await Promise.all(jobs);
+      const brokenAnim = Array.from(preview.querySelectorAll('img.anim-fr')).filter((i) => i.complete && i.naturalWidth === 0).length;
+      check('(c12) anim on ' + res.length + ' themed floors, panel/eom src changes in 3s [' + res.join(' ') + ']' + (bad.length ? ' bad=' + bad.join(',') : '') + '; ' + nfr + ' frames decode (fail ' + decFail + ', wrong size ' + sizeBad + '), broken anim imgs ' + brokenAnim,
+        keys.length >= 6 && keys.every((k) => THEME_KEYS.indexOf(k) >= 0) && res.length === keys.length && bad.length === 0 && nfr >= keys.length * 2 * 7 && decFail === 0 && sizeBad === 0 && brokenAnim === 0);
+    }
+    /* (s) zero images fail to load: every <img> on screen + every embedded theme asset decodes */
+    const srcs = new Set(Array.from(preview.querySelectorAll('img')).map((i) => i.getAttribute('src')));
+    THEME_KEYS.forEach((k) => { const th = V52.themeFor(k); [th.desk, th.chair, th.monitor, th.keyboard, th.elevatorFrame, th.elevatorDoor, th.agentAcc && th.agentAcc.src, th.bossAcc && th.bossAcc.src]
+      .concat(Object.values(th.props).map((x) => x.src)).concat(Object.values(th.deskItems).map((x) => x.src))
+      .concat([th.chrome.eomPortrait ? mod.__v52.asset(th.chrome.eomPortrait) : null, mod.__v52.asset(th.raw.wallTexture), mod.__v52.asset(th.raw.wallTrimTexture), mod.__v52.asset(th.raw.floorTile)])
+      .forEach((x) => { if (x) srcs.add(x); }); });
+    let failed = 0;
+    await Promise.all(Array.from(srcs).map((u) => new Promise((res) => { const im = new Image(); im.onload = () => { if (!im.naturalWidth) failed++; res(); }; im.onerror = () => { failed++; res(); }; im.src = u; })));
+    const broken = Array.from(preview.querySelectorAll('img')).filter((i) => i.complete && i.naturalWidth === 0).length;
+    check('(s) 0 images failed to load (' + srcs.size + ' unique srcs, failed=' + failed + ', broken on screen=' + broken + ')', failed === 0 && broken === 0 && srcs.size > 150);
+    /* ===== v5.7 (t1..t4): whiteboard modes, themed board, tool bubbles, EoM always moving ===== */
+    {
+      const V57 = mod.__v57;
+      const FLx = (n) => preview.querySelector('[data-testid="interior"][data-pname="' + n + '"]');
+      const hitOf = (n) => FLx(n).querySelector('[data-testid="wbhit"]');
+      const titleOf = (n) => { const t = FLx(n).querySelector('[data-wbframe] [data-wb="title"]'); return t ? t.textContent : ''; };
+      const bodyOf = (n) => FLx(n).querySelector('[data-testid="wbbody"]');
+      try { localStorage.removeItem('hermes-office.wbMode.v57'); } catch (e) {}
+      mount();
+      await until(() => preview.querySelectorAll('[data-testid="interior"]').length >= 12 && hitOf('default'), 8000);
+      await sleep(500);
+      /* (t1) 7 clicks on the board -> 7 distinct modes, header = icon + NAME, back to the start; body fades in <= 200ms;
+         click on the board opens no chat / no drawer; boss click does not change the mode; mode survives a remount */
+      {
+        FLx('default').scrollIntoView({ block: 'start' }); await sleep(150);
+        const open0 = window.__OFFICE_RPC__.counts['openSession'] || 0;
+        const seen = [bodyOf('default').getAttribute('data-mode')]; const titles = [titleOf('default')]; const durs = [];
+        let pointer = getComputedStyle(hitOf('default')).cursor === 'pointer';
+        for (let i = 0; i < 7; i++) {
+          const before = bodyOf('default').getAttribute('data-mode');
+          hitOf('default').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+          await until(() => bodyOf('default').getAttribute('data-mode') !== before, 1500);
+          seen.push(bodyOf('default').getAttribute('data-mode')); titles.push(titleOf('default'));
+          const cs = getComputedStyle(bodyOf('default')); durs.push(parseFloat(cs.animationDuration) || 0);
+        }
+        const distinct = new Set(seen.slice(0, 7)).size;
+        const names = V57.WB_MODES.map((m) => m.name || 'TODO');
+        const titleOk = titles.slice(0, 7).every((t, i) => t.indexOf(V57.WB_MODES[i].icon) === 0 && t.indexOf(names[i]) > 0);
+        const noSide = (window.__OFFICE_RPC__.counts['openSession'] || 0) === open0 && preview.querySelectorAll('[data-testid="sess-drawer"]').length === 0;
+        /* boss click must not advance the board */
+        hitOf('default').dispatchEvent(new MouseEvent('click', { bubbles: true })); await sleep(120);
+        const m1 = bodyOf('default').getAttribute('data-mode');
+        FLx('default').querySelector('[data-testid="boss"]').dispatchEvent(new MouseEvent('click', { bubbles: true })); await sleep(120);
+        const bossKeeps = bodyOf('default').getAttribute('data-mode') === m1;
+        /* per floor: another floor's board is independent */
+        const otherKeeps = bodyOf('designer').getAttribute('data-mode') === 'todo';
+        mount();
+        await until(() => preview.querySelectorAll('[data-testid="interior"]').length >= 12 && hitOf('default'), 8000); await sleep(300);
+        const persisted = bodyOf('default').getAttribute('data-mode') === m1;
+        /* hit area = the board box, above the wall decor, not over agents/cleaner/header chip */
+        const hb = wbox(FLx('default'), hitOf('default'));
+        const boxOk = Math.abs(hb.x - 643) < 2 && Math.abs(hb.y - 13) < 2 && Math.abs(hb.w - 326) < 2 && Math.abs(hb.h - 201) < 2;
+        check('(t1) board click cycles ' + distinct + ' distinct modes [' + seen.join('>') + '] and wraps to ' + seen[7] + '; titles ' + titles.slice(0, 7).join(' | ') + '; fade ' + Math.max.apply(null, durs) + 's; cursor pointer ' + pointer + '; no chat/drawer ' + noSide + '; boss click keeps mode ' + bossKeeps + '; other floor independent ' + otherKeeps + '; persisted after remount ' + persisted + '; hit box ' + JSON.stringify(hb),
+          distinct === 7 && seen[7] === seen[0] && titleOk && Math.max.apply(null, durs) <= 0.2 && Math.min.apply(null, durs) > 0 && pointer && noSide && bossKeeps && otherKeeps && persisted && boxOk);
+        /* back to TODO for the next checks */
+        while (bodyOf('default').getAttribute('data-mode') !== 'todo') { hitOf('default').dispatchEvent(new MouseEvent('click', { bubbles: true })); await sleep(60); }
+      }
+      /* (t2) every floor: board bg / header / title colours = the floor theme (ref colours on unthemed floors), in EVERY mode; no <pattern> dither */
+      {
+        const bad = []; let n = 0;
+        const fl = Array.from(preview.querySelectorAll('[data-testid="interior"]'));
+        for (let m = 0; m < V57.WB_MODES.length; m++) {
+          for (const f of fl) {
+            const k = f.getAttribute('data-pname');
+            const th = V52.themeFor(k === 'default' ? 'default' : k);
+            const C = V57.wbColors(th ? th.chrome : null, th ? th.accent : null);
+            const fr = f.querySelector('[data-wbframe]');
+            const g = (sel, a) => { const e = fr.querySelector('[data-wb="' + sel + '"]'); return e ? String(e.getAttribute(a)).toLowerCase() : 'none'; };
+            n++;
+            if (g('head', 'fill') !== String(C.head).toLowerCase() || g('bg', 'fill') !== String(C.bg).toLowerCase() || g('title', 'fill') !== String(C.headTxt).toLowerCase()) bad.push(k + '@' + m);
+            if (f.querySelector('[data-testid="wbbody"] pattern, [data-wbframe] pattern')) bad.push(k + ':pattern');
+          }
+          fl.forEach((f) => f.querySelector('[data-testid="wbhit"]').dispatchEvent(new MouseEvent('click', { bubbles: true })));
+          await sleep(120);
+        }
+        const wrapped = fl.every((f) => f.querySelector('[data-testid="wbbody"]').getAttribute('data-mode') === 'todo');
+        check('(t2) board colours = floor theme on ' + fl.length + ' floors x ' + V57.WB_MODES.length + ' modes (' + n + ' checks), bad ' + (bad.join(',') || 'none') + ', all wrapped to todo ' + wrapped, bad.length === 0 && n === fl.length * 7 && wrapped);
+      }
+      /* (t2b) modes draw real data: default floor TOOLS pie has slices from the subagents' last_tool, SUBAGENTS lists sa-1/sa-2 running,
+         ORG shows 2 kids, TIMELINE bars, SAFETY number, NEWS ticker with the session title */
+      {
+        const got = {};
+        for (let m = 0; m < 7; m++) {
+          const bd = bodyOf('default'); const id = bd.getAttribute('data-mode');
+          got[id] = { slices: bd.querySelectorAll('[data-wb="slice"]').length, run: bd.querySelectorAll('[data-wb="st-running"]').length, kids: bd.querySelectorAll('[data-wb="orgkid"]').length,
+            bars: bd.querySelectorAll('[data-wb="bar"]').length, safety: (bd.querySelector('[data-wb="safety-n"]') || {}).textContent || '', ticker: (bd.querySelector('[data-wb="ticker"]') || {}).textContent || '', txt: bd.textContent };
+          hitOf('default').dispatchEvent(new MouseEvent('click', { bubbles: true })); await sleep(80);
+        }
+        const ok = got.tools.slices >= 2 && got.subs.run === 2 && got.org.kids === 2 && got.timeline.bars >= 2 && /^[0-9]+$/.test(got.safety.safety) && got.news.ticker.indexOf('REFACTOR GATEWAY') >= 0 && got.todo.txt.indexOf('Map the gateway module') >= 0;
+        check('(t2b) real data per mode: pie ' + got.tools.slices + ' slices, subs running ' + got.subs.run + ', org kids ' + got.org.kids + ', timeline bars ' + got.timeline.bars + ', safety ' + got.safety.safety + ', ticker ' + got.news.ticker.slice(0, 40), ok);
+      }
+      /* (t3) tool bubbles: unit format + redaction, then live events -> boss bubble (main agent) + subagent bubble, "+N command", gone 3s after the turn */
+      {
+        const f1 = V57.fmtTool('terminal', { command: 'python3 test/theme_embed.py --help\\nsecond line' });
+        const f2 = V57.fmtTool('read_file', { path: '/Users/alice/.hermes/desktop-plugins/hermes-office/test/harness.html' });
+        const f3 = V57.fmtTool('terminal', { command: 'curl -H token=abc123 https://x.io?key=zzz sk-live123456 ghp_abcdef password hunter2' });
+        const f4 = V57.fmtTool('delegate_task', { tasks: [{}, {}, {}] });
+        const f5 = V57.fmtTool('message_agent', { target: 'designer', message: 'hi' });
+        const f6 = V57.fmtTool('browser_exec', { code: '# Searching Amazon for towels\\nnew_tab(1)' });
+        const f7 = V57.fmtTool('web_extract', { urls: ['https://example.com/a/b'] });
+        const f8 = V57.fmtTool('mystery_tool', {});
+        const leak = /sk-|ghp_|token=|key=|password|hunter2|abc123|alice/i;
+        const unit = f1.text === 'ran python3 test/theme_embed.py --help' && f2.text.indexOf('harness.html') > 0 && f2.text.length <= 35 && !leak.test(f2.text)
+          && !leak.test(f3.text) && f4.text === 'Delegating 3 subagents' && f5.text === 'DM @designer' && f6.text === 'Searching Amazon for towels' && f7.text === 'example.com/a/b' && f8.text === 'mystery_tool'
+          && V57.withMore(f1, 2) === 'ran python3 test/theme_embed.py --help + 1 command' && f1.icon !== f2.icon && f8.icon === V57.fmtTool('zzz', {}).icon;
+        check('(t3a) fmtTool ref format + redaction [' + [f1, f2, f3, f4, f5, f6, f7, f8].map((x) => x.icon + ' ' + x.text).join(' | ') + ']', unit);
+        /* (t3b) reviewer v5.7: basic-auth / -u user:pass / JWT / PAT leaks; corrupt stored modes; ACT store pruned */
+        {
+          const L = [
+            V57.fmtTool('terminal', { command: 'curl -u admin:S3cr3tP4ss api.co' }).text, // gitleaks:allow (fake, redaction test)
+            V57.fmtTool('web_extract', { urls: ['https://admin:hunter2@internal.example.com/x'] }).text,
+            V57.fmtTool('terminal', { command: 'curl --user bob:pw123 x.io' }).text, // gitleaks:allow (fake, redaction test)
+            V57.fmtTool('terminal', { command: 'echo eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.abc' }).text,
+            V57.fmtTool('terminal', { command: 'git clone https://github_pat_ABC123xyz@github.com/a' }).text,
+            V57.fmtTool('terminal', { command: 'export GL=glpat-abcdefghij' }).text];
+          const leak2 = /S3cr3t|hunter2|pw123|eyJ|github_pat|glpat/;
+          const idx = [V57.wbModeIdx('abc'), V57.wbModeIdx(-3), V57.wbModeIdx(2e9), V57.wbModeIdx(3), V57.wbModeIdx(6.5)];
+          const act = {}; const t0 = 1e12;
+          V57.actReduce(act, { type: 'subagent.tool', payload: { tool_name: 'read_file', subagent_id: 'old' } }, 'k', t0);
+          V57.actReduce(act, { type: 'message.start', session_id: 'old-turn' }, 'k', t0);
+          V57.actReduce(act, { type: 'subagent.tool', payload: { tool_name: 'read_file', subagent_id: 'new' } }, 'k', t0 + 11 * 60 * 1000);
+          const kept = Object.keys(act.k.subs).join(',') + '/' + Object.keys(act.k.turns).join(',');
+          check('(t3b) redaction ' + JSON.stringify(L) + '; corrupt modes -> ' + idx.join(',') + '; pruned store ' + kept,
+            !L.some((x) => leak2.test(x)) && idx.join(',') === '0,0,0,3,0' && kept === 'new/' && act.k.counts.read_file === 2);
+        }
+        /* (t1k) keyboard: Enter/Space on the focusable board = next mode; 7 presses wrap back */
+        {
+          const m0 = hitOf('default').getAttribute('data-mode'); const seenK = [];
+          for (let i = 0; i < 7; i++) { hitOf('default').dispatchEvent(new KeyboardEvent('keydown', { key: i % 2 ? ' ' : 'Enter', bubbles: true })); await sleep(60); seenK.push(hitOf('default').getAttribute('data-mode')); }
+          check('(t1k) keyboard cycles board [' + m0 + '>' + seenK.join('>') + '], tabIndex ' + hitOf('default').tabIndex, seenK[0] !== m0 && seenK[6] === m0 && new Set(seenK).size === 7 && hitOf('default').tabIndex === 0);
+        }
+        const EV = window.__OFFICE_EMITEV__;
+        FLx('default').scrollIntoView({ block: 'start' }); await sleep(100);
+        await until(() => FLx('default').querySelectorAll('[data-testid="agent"][data-phase="idle"]').length >= 2, 8000);
+        const bossTool = (n) => { const e = FLx(n).querySelector('[data-testid="bosstool"]'); return e ? e.textContent : ''; };
+        const subTool = (id) => { const e = FLx('default').querySelector('[data-testid="agent"][data-id="' + id + '"] [data-testid="toolbubble"]'); return e ? e.textContent : ''; };
+        const baseSub = subTool('sa-2');
+        EV({ type: 'message.start', session_id: 'rt-a' });
+        EV({ type: 'tool.start', session_id: 'rt-a', payload: { tool_id: 't1', name: 'terminal', args: { command: 'python3 test/theme_embed.py --help token=SECRET99' } } });
+        await until(() => bossTool('default'), 1500);
+        const b1 = bossTool('default');
+        EV({ type: 'tool.start', session_id: 'rt-a', payload: { tool_id: 't2', name: 'read_file', args: { path: '/Users/alice/x/plugin.js' } } });
+        await until(() => bossTool('default') !== b1, 1500);
+        const b2 = bossTool('default');
+        EV({ type: 'subagent.tool', session_id: 'rt-a', payload: { goal: 'g', task_count: 1, task_index: 0, subagent_id: 'sa-1', tool_name: 'search_files', tool_preview: '/Users/alice/Code/app/src' } });
+        await until(() => subTool('sa-1').indexOf('app/src') >= 0, 1500);
+        const s1 = subTool('sa-1');
+        EV({ type: 'tool.start', profile: 'designer', session_id: 'd-1', payload: { tool_id: 'd1', name: 'web_search', args: { query: 'pixel office palettes' } } });
+        await until(() => bossTool('designer'), 1500);
+        const d1 = bossTool('designer');
+        const attached = !!FLx('default').querySelector('[data-testid="bosstool"] .w-bubble') && !!FLx('default').querySelector('[data-testid="agent"][data-id="sa-1"] [data-testid="toolbubble"] .w-bubble');
+        EV({ type: 'message.complete', session_id: 'rt-a', payload: { text: 'done' } });
+        await sleep(1200);
+        const lingering = !!bossTool('default');
+        await until(() => !bossTool('default'), 4000);
+        const gone = !bossTool('default');
+        const all = [b1, b2, s1, d1].join(' ');
+        check('(t3) live bubbles: boss "' + b1 + '" -> "' + b2 + '", sub sa-1 "' + s1 + '", sa-2 from last_tool "' + baseSub + '", designer boss "' + d1 + '", children of their character ' + attached + ', still up 1.2s after turn ' + lingering + ', gone after 3s ' + gone + ', leak ' + leak.test(all),
+          b1.indexOf('ran python3 test/theme_embed.py') >= 0 && b1.indexOf('SECRET99') < 0 && /\\+ 1 command/.test(b2) && b2.indexOf('~/x/plugin.js') >= 0 && s1.indexOf('~/Code/app/src') >= 0
+          && baseSub.indexOf('read_file') >= 0 && d1.indexOf('pixel office palettes') >= 0 && attached && lingering && gone && !leak.test(all));
+        EV({ type: 'message.complete', profile: 'designer', session_id: 'd-1', payload: {} });
+        EV({ type: 'subagent.complete', session_id: 'rt-a', payload: { goal: 'g', task_count: 1, task_index: 0, subagent_id: 'sa-1' } });
+      }
+      /* (t4) EoM portrait keeps moving on every themed floor: >= 6 frame changes inside ANY 3s window, anim <img> visible above the still photo */
+      {
+        const AS = mod.__v56 && mod.__v56.ANIM_STATE;
+        const keys = AS && AS.raw ? Object.keys(AS.raw) : [];
+        const res = []; const bad = [];
+        for (const k of keys) {
+          const f = FLx(k);
+          if (!f) { bad.push(k + ':nofloor'); continue; }
+          f.scrollIntoView({ block: 'start' }); await sleep(200);
+          const ei = () => FLx(k).querySelector('[data-anim="eom"]');
+          if (!ei()) { bad.push(k + ':noimg'); continue; }
+          const cs = getComputedStyle(ei()); const box = wbox(FLx(k), ei());
+          const svg = FLx(k).querySelector('.eom-animated');
+          const above = svg && (svg.compareDocumentPosition(ei()) & Node.DOCUMENT_POSITION_FOLLOWING) && +cs.zIndex >= +getComputedStyle(svg).zIndex;
+          const vis = cs.opacity === '1' && cs.visibility === 'visible' && cs.display !== 'none' && Math.abs(box.w - 84) < 1 && Math.abs(box.h - 84) < 1 && Math.abs(box.x - 202) < 1 && Math.abs(box.y - 95) < 1;
+          let c = 0, last = ei().getAttribute('src'); const frames = new Set([ei().getAttribute('data-frame')]); const t0 = Date.now();
+          while (Date.now() - t0 < 3000) { await sleep(30); const s2 = ei().getAttribute('src'); if (s2 !== last) { c++; last = s2; frames.add(ei().getAttribute('data-frame')); } }
+          res.push(k + ':' + c + '/' + frames.size + 'f');
+          if (!(c >= 6 && frames.size >= 3 && vis && above)) bad.push(k + '(c' + c + ' f' + frames.size + ' vis' + vis + ' above' + !!above + ')');
+        }
+        check('(t4) EoM moving on ' + res.length + ' themed floors, frame changes in 3s [' + res.join(' ') + ']' + (bad.length ? ' bad=' + bad.join(',') : ''), keys.length >= 6 && res.length === keys.length && bad.length === 0);
+      }
+      try { localStorage.removeItem('hermes-office.wbMode.v57'); } catch (e) {}
+    }
+    /* ===== v5.7b (t5): session.activity -> "what is it doing" bubbles for EVERY bot ===== */
+    {
+      const V = mod.__v57b;
+      const FLy = (n) => preview.querySelector('[data-testid="interior"][data-pname="' + n + '"]');
+      const bossT = (n) => { const e = FLy(n) && FLy(n).querySelector('[data-testid="bosstool"]'); return e ? e.textContent : ''; };
+      const subT = (n, id) => { const e = FLy(n) && FLy(n).querySelector('[data-testid="agent"][data-id="' + id + '"] [data-testid="toolbubble"]'); return e ? e.textContent : ''; };
+      const nowS = () => Math.floor(Date.now() / 1000);
+      const leak = /sk-|ghp_|token=|SECRET77|hunter2|alice/i;
+      /* (t5a) pure: +N more, dedupe per (session, timestamp), unique names per row, root/sub split, TTLs, merge newer-wins */
+      {
+        const F = { counts: { terminal: 1 } };
+        const r1 = { session_id: 's1', parent_session_id: null, ended_at: null, timestamp: 1000, tools: [{ name: 'terminal', arguments: '{"command":"ls -la"}' }, { name: 'terminal', arguments: '{}' }, { name: 'read_file', arguments: '{"path":"/tmp/a"}' }] };
+        const r2 = { session_id: 'k1', parent_session_id: 's1', ended_at: null, timestamp: 1001, tools: [{ name: 'web_search', arguments: 'not json' }] };
+        V.actvApply(F, [r1, r2], 1002); V.actvApply(F, [r1, r2], 1005);
+        const Fe = {}; V.actvApply(Fe, [{ session_id: 'e1', parent_session_id: '', timestamp: 5, tools: [{ name: 'patch', arguments: '{}' }] }], 6); const emptyParentRoot = !!Fe.aroot && !Object.keys(Fe.asubs).length;
+        const c1 = JSON.stringify(F.acounts);
+        V.actvApply(F, [Object.assign({}, r1, { timestamp: 1010 })], 1011);
+        const act = { k: F };
+        const bv = V.actvBossView(act, 'k', 1011 * 1000), bOld = V.actvBossView(act, 'k', (1010 + 21) * 1000);
+        V.actvApply(F, [Object.assign({}, r1, { timestamp: 1012, ended_at: 1013 })], 1013);
+        const bEnd = V.actvBossView(act, 'k', 1013 * 1000);
+        const merged = V.actvMergeCounts(F);
+        const nv = V.newerView({ text: 'ev', t: 5 }, { text: 'av', t: 9 }).text + V.newerView({ text: 'ev', t: 9 }, { text: 'av', t: 5 }).text;
+        const ok = c1 === '{"terminal":1,"read_file":1,"web_search":1}' && F.acounts.terminal === 3 && bv && bv.text === 'ran ls -la +2 more' && !bOld && !bEnd
+          && merged.terminal === 3 && merged.read_file === 3 && nv === 'avev' && emptyParentRoot && V.actvRowView({ session_id: 'x', tools: [] }) === null;
+        check('(t5a) activity pure: counts after 2 identical polls ' + c1 + ', after new ts ' + JSON.stringify(F.acounts) + ', boss "' + (bv && bv.text) + '", >20s ' + !!bOld + ', ended ' + !!bEnd + ', pie merge ' + JSON.stringify(merged) + ', newer ' + nv + ', empty-string parent = root ' + emptyParentRoot, ok);
+      }
+      /* fixtures: coder root (fresh) + coder subagent (a session.children id, so it has a capsule), designer root (fresh), video root 30s old (coder is in the base fixture since v5.8b) */
+      window.__OFFICE_EXTRA_BOTS__ = null;
+      window.__OFFICE_CHILDREN__ = { coder: [{ id: 'ch-co-1', parent_session_id: 'co-root', source: 'tool', title: 'Write tests', started_at: nowS() - 60, ended_at: null, end_reason: null, message_count: 3, last_active: nowS() - 2 }] };
+      window.__OFFICE_ACTIVITY__ = {
+        coder: () => [
+          { session_id: 'co-root', parent_session_id: null, source: 'tool', ended_at: null, timestamp: nowS() - 1, tools: [{ name: 'terminal', arguments: JSON.stringify({ command: 'cd /Users/alice/x && node test/run.cjs full --token=SECRET77', timeout: 600 }) }, { name: 'read_file', arguments: '{}' }] },
+          { session_id: 'ch-co-1', parent_session_id: 'co-root', source: 'subagent', ended_at: null, timestamp: nowS() - 2, tools: [{ name: 'search_files', arguments: JSON.stringify({ pattern: 'session.activity', path: '/Users/alice/Code' }) }] },
+        ],
+        designer: () => [{ session_id: 'd-root', parent_session_id: null, source: 'desktop', ended_at: null, timestamp: nowS() - 2, tools: [{ name: 'web_search', arguments: JSON.stringify({ query: 'pixel office palettes' }) }] }],
+        video: () => [{ session_id: 'vi-root', parent_session_id: null, source: 'desktop', ended_at: null, timestamp: nowS() - 30, tools: [{ name: 'terminal', arguments: '{"command":"echo old"}' }] }],
+      };
+      window.__OFFICE_ACTV_LOG__ = []; window.__OFFICE_ACTV_MAXPAR__ = {}; window.__OFFICE_ACTV_INFLIGHT__ = {};
+      mount();
+      await until(() => FLy('coder') && FLy('coder').querySelector('[data-testid="agent"][data-id="ch-co-1"][data-phase="idle"]'), 45000); /* may arrive via the lift first: tool bubbles show only when seated */
+      /* (t5b) non-default bot floor: root row -> main agent (boss) bubble with formatted + redacted text; subagent row -> its capsule */
+      FLy('coder').scrollIntoView({ block: 'start' });
+      await until(() => bossT('coder') && subT('coder', 'ch-co-1').indexOf('session.activity') >= 0, 10000);
+      const cb = bossT('coder'), cs = subT('coder', 'ch-co-1');
+      const cAttached = !!FLy('coder').querySelector('[data-testid="bosstool"] .w-bubble');
+      check('(t5b) coder floor: boss "' + cb + '" (attached ' + cAttached + '), subagent ch-co-1 "' + cs + '", leak ' + leak.test(cb + cs),
+        cb.indexOf('ran cd ~/x') >= 0 && /[+]1 more/.test(cb) && cs.indexOf('session.activity') >= 0 && cAttached && !leak.test(cb + cs));
+      /* (t5c) designer floor (themed) gets its own bubble; video row 30s old -> NO bubble */
+      FLy('designer').scrollIntoView({ block: 'start' });
+      await until(() => bossT('designer'), 10000);
+      const db = bossT('designer');
+      FLy('video').scrollIntoView({ block: 'start' });
+      const t0 = Date.now(); let anReq = 0;
+      await until(() => { anReq = window.__OFFICE_ACTV_LOG__.filter((x) => x.profile === 'video' && x.t > t0).length; return anReq >= 2; }, 9000);
+      await sleep(300);
+      const ab = bossT('video');
+      check('(t5c) designer boss "' + db + '"; video row 30s old -> bubble "' + ab + '" after ' + anReq + ' polls', db.indexOf('pixel office palettes') >= 0 && anReq >= 2 && ab === '');
+      /* (t5d) off-screen floors get 0 requests; on-screen floors get ~1 per 3s; never 2 in flight per floor even when the RPC is slower than the poll */
+      {
+        const names = Array.from(preview.querySelectorAll('[data-testid="interior"]')).map((f) => f.getAttribute('data-pname'));
+        FLy(names[names.length - 1]).scrollIntoView({ block: 'end' });
+        await sleep(500);
+        const vr = preview.getBoundingClientRect(); const vh = window.innerHeight;
+        const offs = names.filter((n) => { const r = FLy(n).querySelector('[data-testid="world"]').getBoundingClientRect(); return r.bottom < -40 || r.top > vh + 40; });
+        const ons = names.filter((n) => { const r = FLy(n).querySelector('[data-testid="world"]').getBoundingClientRect(); return r.bottom > 40 && r.top < vh - 40; });
+        window.__OFFICE_ACTIVITY_DELAY__ = 7000; window.__OFFICE_ACTV_MAXPAR__ = {};
+        const t1 = Date.now(); await sleep(10000);
+        const log = window.__OFFICE_ACTV_LOG__.filter((x) => x.t > t1);
+        const offHits = log.filter((x) => offs.indexOf(x.profile === 'default' ? 'default' : x.profile) >= 0).length;
+        const onHits = log.filter((x) => ons.indexOf(x.profile) >= 0).length;
+        const maxPar = Math.max.apply(null, [0].concat(Object.values(window.__OFFICE_ACTV_MAXPAR__)));
+        window.__OFFICE_ACTIVITY_DELAY__ = 0;
+        await sleep(7500); /* let the slow requests drain */
+        check('(t5d) ' + offs.length + ' off-screen floors -> ' + offHits + ' requests in 10s; on-screen [' + ons.join(',') + '] -> ' + onHits + ' (RPC 7s slow); max in flight per floor ' + maxPar + ' (vr ' + Math.round(vr.width) + ')',
+          offs.length >= 5 && offHits === 0 && ons.length >= 1 && onHits >= ons.length && onHits <= ons.length * 2 && maxPar === 1);
+      }
+      /* (t5e) RPC throws (old backend: unknown method) -> silent, bubbles gone, 30s backoff, rest of the office intact */
+      {
+        FLy('coder').scrollIntoView({ block: 'start' });
+        await until(() => bossT('coder'), 8000);
+        const errs0 = (window.__consoleErrors__ || []).length;
+        const had = !!bossT('coder');
+        window.__OFFICE_ACTIVITY_THROW__ = true;
+        const t2 = Date.now();
+        await until(() => !bossT('coder') && !subT('coder', 'ch-co-1'), 8000);
+        const gone = !bossT('coder') && !subT('coder', 'ch-co-1');
+        const nAt = window.__OFFICE_ACTV_LOG__.filter((x) => x.t > t2).length;
+        await sleep(7000);
+        const nAfter = window.__OFFICE_ACTV_LOG__.filter((x) => x.t > t2).length;
+        const capsule = !!FLy('coder').querySelector('[data-testid="agent"][data-id="ch-co-1"]');
+        const errs = (window.__consoleErrors__ || []).length - errs0;
+        check('(t5e) RPC throw: bubble before ' + had + ', gone ' + gone + ', requests at failure ' + nAt + ' -> 7s later ' + nAfter + ' (backoff), capsule kept ' + capsule + ', new console/page errors ' + errs,
+          had && gone && nAfter === nAt && capsule && errs === 0);
+        window.__OFFICE_ACTIVITY_THROW__ = false;
+      }
+      /* (t5f) a request that NEVER settles frees its floor after ACTV_HANG_MS (no floor stuck forever), still 1 live request at a time */
+      {
+        FLy('designer').scrollIntoView({ block: 'start' });
+        const tb = Date.now(); /* t5e left a 30s backoff behind: wait until designer is polled again */
+        await until(() => window.__OFFICE_ACTV_LOG__.some((x) => x.profile === 'designer' && x.t > tb), 40000);
+        await sleep(3200);
+        window.__OFFICE_ACTIVITY_DELAY__ = 1e9; window.__OFFICE_ACTV_MAXPAR__ = {};
+        const t3 = Date.now();
+        await sleep(V.ACTV_HANG_MS + 5000);
+        const n = window.__OFFICE_ACTV_LOG__.filter((x) => x.profile === 'designer' && x.t > t3).length;
+        window.__OFFICE_ACTIVITY_DELAY__ = 0;
+        await until(() => window.__OFFICE_ACTV_LOG__.filter((x) => x.profile === 'designer' && x.t > t3).length >= n + 2, 30000);
+        const n2 = window.__OFFICE_ACTV_LOG__.filter((x) => x.profile === 'designer' && x.t > t3).length;
+        check('(t5f) hung request: designer sent ' + n + ' requests in ' + ((V.ACTV_HANG_MS + 5000) / 1000) + 's (1 hung + 1 retry after ' + (V.ACTV_HANG_MS / 1000) + 's), polling resumes after (' + n2 + ')', n === 2 && n2 >= n + 2);
+      }
+      window.__OFFICE_ACTIVITY__ = null; window.__OFFICE_CHILDREN__ = null; window.__OFFICE_EXTRA_BOTS__ = null;
+    }
+    window.__OFFICE_EXTRA_BOTS__ = null;
+    mount();
+    await until(() => preview.querySelectorAll('[data-testid="interior"]').length === 12, 8000);
+    /* v5.8b: coder is now a base-fixture floor (was an EXTRA_BOTS mount that vanished here), so the t5 child ch-co-1
+       still walks out through the lift after its row is gone — let that departure finish before (n) counts foreign agents */
+    await until(() => { const cf = Array.from(preview.querySelectorAll('[data-testid="interior"]')).find((r) => r.getAttribute('data-pname') === 'coder'); return !!cf && cf.querySelectorAll('[data-testid="agent"]').length === 0; }, 45000);
+    await sleep(400);
+  }
+  /* ===== v5.1: other bots' sub-agents via session.children ===== */
+  {
+    const nowS = () => Math.floor(Date.now() / 1000);
+    const FL = (n) => Array.from(preview.querySelectorAll('[data-testid="interior"]')).find((r) => r.getAttribute('data-pname') === n);
+    /* (m) pure filter: running = ended_at null && active < 600s; orphans + ended rows excluded */
+    if (V5 && V5.runningChildren) {
+      const t = 1000000;
+      const rows = [
+        { id: 'live', parent_session_id: 'p', ended_at: null, last_active: t - 30, title: 'Crunch numbers' },
+        { id: 'orphan', parent_session_id: 'p', ended_at: null, last_active: t - 86000 },
+        { id: 'edge', parent_session_id: 'p', ended_at: null, last_active: t - 600 },
+        { id: 'done', parent_session_id: 'p', ended_at: t - 10, last_active: t - 10 },
+      ];
+      const got = V5.runningChildren(rows, t).map((x) => x.subagent_id);
+      check('(m) runningChildren: live only, orphan/ended/600s-edge dropped -> ' + JSON.stringify(got), got.join(',') === 'live');
+    } else check('(m) __v5.runningChildren exported', false);
+    /* (n) video floor: 1 child running -> 1 capsule leaves the lift -> queue -> desk; then ended -> departure -> gone */
+    {
+      const seq = []; const note = (k) => { if (!seq.includes(k)) seq.push(k); };
+      window.__OFFICE_CHILDREN__ = { video: [{ id: 'ch-an-1', parent_session_id: 'ps-video-1', source: 'desktop', title: 'Scan hooks', started_at: nowS() - 2, ended_at: null, end_reason: null, message_count: 1, last_active: nowS() - 1 }] };
+      window.__OFFICE_EMIT__('sessions.changed');
+      const t0 = Date.now();
+      while (Date.now() - t0 < 45000) {
+        await sleep(120);
+        const f = FL('video'); const a = f && f.querySelector('[data-testid="agent"][data-id="ch-an-1"]'); if (!a) continue;
+        const x = +a.getAttribute('data-x'), y = +a.getAttribute('data-y'), ph = a.getAttribute('data-phase');
+        if (x >= 30 && x <= 142 && y >= 90 && y <= 300 && f.querySelector('.ev-light[data-open="1"]')) note('lift');
+        if (ph === 'in_arrival_queue' || ph === 'walking_to_ready' || ph === 'conversing') note('queue'); /* ref: an empty boss claims the queue head in the same tick */
+        if (ph === 'idle' && Array.from(f.querySelectorAll('[data-testid="marquee"]')).some((m) => m.textContent.includes('Scan hooks'))) { note('desk'); break; }
+      }
+      const f = FL('video');
+      const count = f ? f.querySelectorAll('[data-testid="agent"]').length : -1;
+      const hc = ((f && f.querySelector('[data-testid="subcount"]')) || {}).textContent || '';
+      check('(n) foreign floor: 1 running child -> exactly 1 capsule ' + seq.join(' > ') + ' (agents=' + count + ', header "' + hc + '")', seq.join(',') === 'lift,queue,desk' && count === 1 && hc === '1 subagents');
+      const otherFl = Array.from(preview.querySelectorAll('[data-testid="interior"]')).filter((r) => !['default', 'video'].includes(r.getAttribute('data-pname')));
+      const others = otherFl.reduce((n, r) => n + r.querySelectorAll('[data-testid="agent"]').length, 0);
+      const otherWho = otherFl.filter((r) => r.querySelectorAll('[data-testid="agent"]').length).map((r) => r.getAttribute('data-pname') + ':' + Array.from(r.querySelectorAll('[data-testid="agent"]')).map((a) => a.getAttribute('data-id') + '/' + a.getAttribute('data-phase')).join('+'));
+      check('(n) other foreign floors stay at 0 agents (' + others + ')' + (otherWho.length ? ' on ' + otherWho.join(' ') : ''), others === 0);
+      /* ended -> departure */
+      window.__OFFICE_CHILDREN__ = { video: [{ id: 'ch-an-1', parent_session_id: 'ps-video-1', source: 'desktop', title: 'Scan hooks', started_at: nowS() - 60, ended_at: nowS(), end_reason: 'agent_close', message_count: 3, last_active: nowS() }] };
+      window.__OFFICE_EMIT__('sessions.changed');
+      const dseq = []; const dn = (k) => { if (!dseq.includes(k)) dseq.push(k); };
+      const t1 = Date.now();
+      while (Date.now() - t1 < 45000) {
+        await sleep(120);
+        const g = FL('video'); const a = g && g.querySelector('[data-testid="agent"][data-id="ch-an-1"]');
+        if (!a) { if (dseq.includes('boss-goodwork')) { dn('gone'); break; } continue; }
+        const ph = a.getAttribute('data-phase');
+        if (ph === 'in_departure_queue' || ph === 'departing') dn('departing');
+        const bb = g.querySelector('[data-testid="bossbubble"]');
+        if (bb && /Good work, /.test(bb.textContent)) dn('boss-goodwork');
+        if (ph === 'walking_to_elevator' && g.querySelector('.ev-light[data-open="1"]')) dn('to-lift');
+      }
+      check('(n) child ended -> departure: ' + dseq.join(' > '), ['departing', 'boss-goodwork', 'to-lift', 'gone'].every((k, i) => dseq.indexOf(k) === i));
+    }
+    /* (o) feature-detect: backend without session.children -> 0 agents, no console error */
+    {
+      window.__OFFICE_CHILDREN__ = { qa: [{ id: 'ch-qa-1', parent_session_id: 'x', ended_at: null, last_active: nowS(), title: 'should not show' }] };
+      window.__OFFICE_CHILDREN_UNSUPPORTED__ = true;
+      const errs0 = (window.__consoleErrors__ || []).length;
+      mount();
+      await until(() => preview.querySelectorAll('[data-testid="interior"]').length >= 12, 8000);
+      await sleep(6500);
+      const qa = FL('qa'); const n = qa ? qa.querySelectorAll('[data-testid="agent"]').length : -1;
+      check('(o) no session.children on backend -> foreign floors 0 agents, no console error (qa=' + n + ')', n === 0 && (window.__consoleErrors__ || []).length === errs0);
+      window.__OFFICE_CHILDREN_UNSUPPORTED__ = false; window.__OFFICE_CHILDREN__ = {};
+      mount();
+      await until(() => preview.querySelectorAll('[data-testid="interior"]').length >= 12, 8000);
+      await sleep(500);
+    }
+  }
+  /* (r) themed lift doors still animate (scaleX) during an arrival — video floor */
+  {
+    const nowS = () => Math.floor(Date.now() / 1000);
+    const FL = (n) => Array.from(preview.querySelectorAll('[data-testid="interior"]')).find((r) => r.getAttribute('data-pname') === n);
+    const th = V52 && V52.themeFor('video');
+    /* v5.8b: off-screen floors pause (content-visibility:hidden, v5.8 perf) so their doors snap without a transition —
+       bring the floor on screen first instead of depending on where earlier tests left the scroll */
+    { const vf = FL('video'); if (vf) vf.scrollIntoView({ block: 'center' }); await sleep(600); }
+    const offAtStart = !!(FL('video') && (FL('video').closest('.offscreen') || FL('video').querySelector('.offscreen')));
+    window.__OFFICE_CHILDREN__ = { video: [{ id: 'ch-an-r', parent_session_id: 'ps-video-1', title: 'Door check', ended_at: null, last_active: nowS() }] };
+    window.__OFFICE_EMIT__('sessions.changed');
+    const seen = []; const t0 = Date.now();
+    const sx = (el) => { const m = getComputedStyle(el).transform; if (!m || m === 'none') return 1; const v = m.slice(m.indexOf('(') + 1, -1).split(',').map(Number); return v[0]; };
+    while (Date.now() - t0 < 30000) {
+      await sleep(60);
+      const f = FL('video'); if (!f) continue;
+      const ds = Array.from(f.querySelectorAll('[data-testid="evdoor"]'));
+      if (ds.length !== 2) continue;
+      const themed = ds.every((d) => th && d.getAttribute('src') === th.elevatorDoor);
+      const open = ds.every((d) => d.classList.contains('open'));
+      const L = sx(ds[0]), R = sx(ds[1]);
+      if (!seen.includes('closed') && themed && !open && L > 0.95 && R < -0.95) seen.push('closed');
+      if (seen.includes('closed') && !seen.includes('opening') && open && Math.abs(L) < 0.95 && Math.abs(L) > 0.02) seen.push('opening');
+      if (seen.includes('closed') && !seen.includes('open') && open && Math.abs(L) < 0.02 && Math.abs(R) < 0.02) seen.push('open');
+      if (seen.includes('open') && !seen.includes('reclosed') && !open && L > 0.95 && R < -0.95) { seen.push('reclosed'); break; }
+    }
+    check('(r) themed lift doors animate on arrival (right = mirrored theme door): ' + seen.join(' > ') + (offAtStart ? ' [floor offscreen]' : ''), seen.join(',') === 'closed,opening,open,reclosed');
+    window.__OFFICE_CHILDREN__ = {};
+    window.__OFFICE_EMIT__('sessions.changed');
+    await sleep(300);
+  }
+  /* v3.7.2 authority-scope (unchanged scanSubagents): owner != current still found */
+  {
+    let found = false;
+    const orig = window.__OFFICE_HOST__.request;
+    window.__OFFICE_HOST__.request = function (method, params) {
+      if (method === 'subagent.list') return orig(method, params).then((res) => (params && params.session_id === 'rt-b')
+        ? { subagents: [{ subagent_id: 'sa-repro', goal: 'Authority repro', status: 'running', tool_count: 1, started_at: Math.floor(Date.now() / 1000) - 3, model: 'glm-5.3' }] }
+        : { subagents: [] });
+      return orig(method, params);
+    };
+    window.__OFFICE_EMIT__('sessions.changed');
+    const t0 = Date.now();
+    while (Date.now() - t0 < 14000) {
+      await sleep(300);
+      const d = defF();
+      if (d && d.querySelector('[data-testid="agent"][data-id="sa-repro"]')) { found = true; break; }
+    }
+    window.__OFFICE_HOST__.request = orig;
+    check('v3.7.2: subagent found via session iteration when current != owner', found);
+  }
+  /* settings toggle + events + i18n */
+  {
+    const gear = Array.from(preview.querySelectorAll('button')).find((b) => b.textContent.trim() === '\\u2699');
+    let ok = false;
+    if (gear) { gear.dispatchEvent(new MouseEvent('click', { bubbles: true })); await sleep(150); const cb = preview.querySelector('.settings input[type="checkbox"]'); if (cb) { cb.click(); await sleep(150); ok = !!preview.querySelector('.ofc-root.anim-off'); } }
+    check('settings gear toggles animation off', ok);
+    const before = window.__OFFICE_RPC__.counts['session.active_list'] || 0;
+    window.__OFFICE_EMIT__('sessions.changed');
+    await sleep(300);
+    check('sessions.changed refetches active_list', (window.__OFFICE_RPC__.counts['session.active_list'] || 0) > before);
+    window.__OFFICE_LOCALE__ = 'id'; mount();
+    await until(() => preview.querySelector('[data-testid="building"]'), 4000); await sleep(200);
+    check('id locale localized', preview.textContent.includes('lantai'));
+    window.__OFFICE_LOCALE__ = 'en'; mount();
+    await until(() => preview.querySelector('[data-testid="building"]'), 4000); await sleep(200);
+  }
+  return finish();
+
+  function finish() {
+    check('console errors = 0 (' + ((window.__consoleErrors__ || []).length) + ')', (window.__consoleErrors__ || []).length === 0);
+    resultsEl.innerHTML = '<div class="hdr">results (' + T.pass + ' passed, ' + T.fail + ' failed)</div>' +
+      T.lines.map((l) => '<div class="' + (l[0] === '✔' ? 'pass' : 'fail') + '">' + l + '</div>').join('');
+    window.__OFFICE_RESULTS__ = { pass: T.pass, fail: T.fail, lines: T.lines };
+    console.log('[harness]', T.pass + ' passed', T.fail + ' failed');
+  }
+}
+window.__RUN_TESTS__ = runTests;
+window.__OFFICE_RESULTS__ = null;
+runTests();
+`;
+  const s = document.createElement('script');
+  s.type = 'module';
+  s.textContent = modSrc;
+  document.head.appendChild(s);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,35 @@
+{
+ "panel": {
+  "frames": [
+   "anim/qa_panel_0.png",
+   "anim/qa_panel_1.png",
+   "anim/qa_panel_2.png",
+   "anim/qa_panel_3.png",
+   "anim/qa_panel_4.png",
+   "anim/qa_panel_5.png",
+   "anim/qa_panel_6.png",
+   "anim/qa_panel_7.png",
+   "anim/qa_panel_8.png",
+   "anim/qa_panel_9.png"
+  ],
+  "fps": 6,
+  "pingpong": false
+ },
+ "eom": {
+  "frames": [
+   "anim/qa_eom_0.png",
+   "anim/qa_eom_1.png",
+   "anim/qa_eom_2.png",
+   "anim/qa_eom_3.png",
+   "anim/qa_eom_4.png",
+   "anim/qa_eom_5.png",
+   "anim/qa_eom_6.png",
+   "anim/qa_eom_7.png",
+   "anim/qa_eom_8.png",
+   "anim/qa_eom_9.png"
+  ],
+  "fps": 5,
+  "idleHoldMs": 300
+ },
+ "note": "bug board: scan beam sweeps board, 6 bugs crossed out one by one -> PASS (counters match visible flips), resets each loop, directional glow sweep (not noise); portrait EOM v2: a hand enters from the side and pushes the goggles up onto the forehead, head tilts to inspect, the other hand raises a magnifying glass into frame, hair strand swings on a pivot, big blink, talk -- static goggle-lens lighting, no glint sweep."
+}

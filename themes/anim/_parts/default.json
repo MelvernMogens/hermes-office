@@ -1,0 +1,39 @@
+{
+ "panel": {
+  "frames": [
+   "anim/default_panel_0.png",
+   "anim/default_panel_1.png",
+   "anim/default_panel_2.png",
+   "anim/default_panel_3.png",
+   "anim/default_panel_4.png",
+   "anim/default_panel_5.png",
+   "anim/default_panel_6.png",
+   "anim/default_panel_7.png",
+   "anim/default_panel_8.png",
+   "anim/default_panel_9.png",
+   "anim/default_panel_10.png",
+   "anim/default_panel_11.png"
+  ],
+  "fps": 6,
+  "pingpong": false
+ },
+ "eom": {
+  "frames": [
+   "anim/default_eom_0.png",
+   "anim/default_eom_1.png",
+   "anim/default_eom_2.png",
+   "anim/default_eom_3.png",
+   "anim/default_eom_4.png",
+   "anim/default_eom_5.png",
+   "anim/default_eom_6.png",
+   "anim/default_eom_7.png",
+   "anim/default_eom_8.png",
+   "anim/default_eom_9.png",
+   "anim/default_eom_10.png",
+   "anim/default_eom_11.png"
+  ],
+  "fps": 5,
+  "idleHoldMs": 300
+ },
+ "note": "planet: 12 frames = 1 full rotation (30deg/frame, one non-periodic equirect texture), comets on ring, moon, ship flyby; portrait EOM v2b: METAL CLAW ARM enters from off-frame bottom-right and rises >=12 cells to beside the face, gripping a bright cyan energon cube (glowing prop, attached to the claw every frame), holds+waves at the peak, then withdraws, WHILE the head does a full turn right(+6)->centre->full left(-6)->back, antenna blink, static visor lighting (no halo/bloom)"
+}

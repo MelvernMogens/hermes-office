@@ -1,0 +1,37 @@
+{
+ "panel": {
+  "frames": [
+   "anim/designer_panel_0.png",
+   "anim/designer_panel_1.png",
+   "anim/designer_panel_2.png",
+   "anim/designer_panel_3.png",
+   "anim/designer_panel_4.png",
+   "anim/designer_panel_5.png",
+   "anim/designer_panel_6.png",
+   "anim/designer_panel_7.png",
+   "anim/designer_panel_8.png",
+   "anim/designer_panel_9.png",
+   "anim/designer_panel_10.png"
+  ],
+  "fps": 6,
+  "pingpong": false
+ },
+ "eom": {
+  "frames": [
+   "anim/designer_eom_0.png",
+   "anim/designer_eom_1.png",
+   "anim/designer_eom_2.png",
+   "anim/designer_eom_3.png",
+   "anim/designer_eom_4.png",
+   "anim/designer_eom_5.png",
+   "anim/designer_eom_6.png",
+   "anim/designer_eom_7.png",
+   "anim/designer_eom_8.png",
+   "anim/designer_eom_9.png",
+   "anim/designer_eom_10.png"
+  ],
+  "fps": 5,
+  "idleHoldMs": 300
+ },
+ "note": "canvas: frame0 genuinely blank (cross-hatch texture), frames1-9 paint a sunrise stroke by stroke (sky, hills, sun, rays, birds, trees, all persistent), frame10 wipes back to near-blank so the wrap reads as a completed reset, under a sweeping magenta studio glow; portrait EOM v2b: BIG ARM (contrasting purple sleeve) enters from off-frame bottom-right and rises >=12 cells to finish ABOVE the head, holding up a bright saturated cyan swatch chip (attached to the hand every frame), beret+head tilt swing left<->right, smile widens, brush wiggles, blink, eases back to neutral on the last frame"
+}

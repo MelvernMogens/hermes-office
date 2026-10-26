@@ -1,0 +1,35 @@
+{
+ "panel": {
+  "frames": [
+   "anim/video_panel_0.png",
+   "anim/video_panel_1.png",
+   "anim/video_panel_2.png",
+   "anim/video_panel_3.png",
+   "anim/video_panel_4.png",
+   "anim/video_panel_5.png",
+   "anim/video_panel_6.png",
+   "anim/video_panel_7.png",
+   "anim/video_panel_8.png",
+   "anim/video_panel_9.png"
+  ],
+  "fps": 6,
+  "pingpong": false
+ },
+ "eom": {
+  "frames": [
+   "anim/video_eom_0.png",
+   "anim/video_eom_1.png",
+   "anim/video_eom_2.png",
+   "anim/video_eom_3.png",
+   "anim/video_eom_4.png",
+   "anim/video_eom_5.png",
+   "anim/video_eom_6.png",
+   "anim/video_eom_7.png",
+   "anim/video_eom_8.png",
+   "anim/video_eom_9.png"
+  ],
+  "fps": 5,
+  "idleHoldMs": 300
+ },
+ "note": "preview monitor pans across a sunset scene (sun drifts through frame); 3 timeline tracks scroll left under a fixed playhead, the clip crossing it lights up; REC blinks, timecode counts up. portrait v3: camera held in TWO fists (no arm limb) rises chest->eye, head tilts in, one eye squints, REC dot blinks, camera lowers, blink + mouth talk (physical motion only)"
+}

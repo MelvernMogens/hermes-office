@@ -1,0 +1,2082 @@
+{
+ "version": "5.2",
+ "world": {
+  "w": 1280,
+  "h": 1024,
+  "wallH": 250,
+  "trim": {
+   "y": 240,
+   "h": 10
+  }
+ },
+ "notes": [
+  "props[slot] = file -> draw this sprite in the ref slot INSTEAD of the ref prop; null = keep ref prop.",
+  "EmployeeOfMonth / WallClock / Whiteboard / SafetySign stay functional (live data) - only recoloured via chrome.*",
+  "deskItems[i].desks = desk indices (0..7, row-major) whose ref DESK_ITEM is replaced by this accessory (drawn at desk.x+dx, desk.y+dy).",
+  "floorTile = themed 100x100 tile (textured, own art), use exactly like SPRITES.floorTile in FLOOR_PATTERN (keep the rotate/odd-tile darkening).",
+  "rugFilter = CSS filter applied to the ref boss rug when props.BossRug is null.",
+  "trimGlow = 2px line on top of the wall trim (y=240) to carry the accent; everything else stays dark.",
+  "All PNGs are pixel art at 2x; render with image-rendering: pixelated at the css sizes below.",
+  "REV3 architecture: wallTexture = 128x240 tile repeated along x over y 0..240; wallTrimTexture = 64x10 tile repeated along x at y 240..250.",
+  "REV3 sprite swaps (SAME css size + anchor as plugin v5 ref): desk 140.5x73.9, chair 63.3x100.8, monitor 63x51.7, keyboard 52.6x14, elevatorFrame 154.4x144.3, elevatorDoor 50.8x123.5 (both doors, scaleX anim). Boss desk/monitor/keyboard/chair use the same theme sprites. Elevator indicator light stays plugin-drawn.",
+  "REV3 capsule: body fill = agentPalette[i % n] (boss = bossBody), stroke = agentStroke (width 4, radius 22, 48x80 unchanged). agentAccessory/bossAccessory REPLACE the ref sunglasses: draw 56x48 at capsule-centre + (x,y). Agent capsule centre = pos + (0,-16); boss capsule centre = (640, 906). The accessory replaces the ref sunglasses always and the ref headset while seated.",
+  "REV3 chrome: whiteboardBg/Border/Text/Dim (dark board, light text), clockFace/clockHand/clockSecond, eomCard (card bg), eomPortrait (optional image replacing the EoM photo)."
+ ],
+ "sizes": {
+  "desk": [
+   140.5,
+   73.9
+  ],
+  "chair": [
+   63.3,
+   100.8
+  ],
+  "monitor": [
+   63,
+   51.7
+  ],
+  "keyboard": [
+   52.6,
+   14
+  ],
+  "elevatorFrame": [
+   154.4,
+   144.3
+  ],
+  "elevatorDoor": [
+   50.8,
+   123.5
+  ],
+  "floorTile": [
+   100,
+   100
+  ],
+  "wallTexture": [
+   128,
+   240
+  ],
+  "wallTrimTexture": [
+   64,
+   10
+  ],
+  "accessory": [
+   56,
+   48
+  ]
+ },
+ "slots": {
+  "CityWindow": {
+   "x": 319,
+   "y": 30,
+   "w": 200,
+   "h": 160,
+   "anchor": "topleft"
+  },
+  "WaterCooler": {
+   "cx": 1010,
+   "cy": 200,
+   "w": 40,
+   "h": 124,
+   "note": "bottom aligned to ref cooler bottom (y=260)"
+  },
+  "CoffeeMachine": {
+   "cx": 1081,
+   "cy": 191,
+   "w": 60,
+   "h": 66
+  },
+  "Plant": {
+   "cx": 118,
+   "cy": 970,
+   "w": 48,
+   "h": 62
+  },
+  "BossRug": {
+   "cx": 640,
+   "cy": 940,
+   "w": 372,
+   "h": 180,
+   "note": "replaces ref boss rug (373x179) under boss desk"
+  },
+  "Printer": {
+   "cx": 50,
+   "cy": 942.2,
+   "w": 64,
+   "h": 60,
+   "note": "replaces printer only; mini desk stays"
+  }
+ },
+ "deskItem": {
+  "dx": 50,
+  "dy": 38,
+  "w": 24,
+  "h": 24
+ },
+ "themes": {
+  "default": {
+   "label": "WARLORD / MECH BASE",
+   "wall": "#1f1f27",
+   "wallTrim": "#2c2340",
+   "floor": "#1a1a20",
+   "floorTile": "sprites/floor_default.png",
+   "accent": "#a855f7",
+   "props": {
+    "CityWindow": "sprites/cyber_holo.png",
+    "WaterCooler": "sprites/energon_pylon.png",
+    "CoffeeMachine": "sprites/energon_cubes.png",
+    "Plant": "sprites/mech_plant.png",
+    "Printer": "sprites/fabricator.png",
+    "BossRug": "sprites/hex_platform.png",
+    "EmployeeOfMonth": null,
+    "WallClock": null,
+    "Whiteboard": null,
+    "SafetySign": null
+   },
+   "deskItems": [
+    {
+     "file": "sprites/d_energon.png",
+     "desks": [
+      0,
+      5
+     ]
+    },
+    {
+     "file": "sprites/d_emblem.png",
+     "desks": [
+      2,
+      7
+     ]
+    }
+   ],
+   "chrome": {
+    "eomFrame": "#5a5d6c",
+    "whiteboardHeader": "#2a1f40",
+    "safetySign": {
+     "bg": "#1e1a2c",
+     "border": "#a855f7",
+     "header": "#ff2d3d",
+     "text": "#22e3ff"
+    },
+    "clockRim": "#2a2c35",
+    "trimGlow": "#a855f7",
+    "whiteboardBg": "#15161c",
+    "whiteboardBorder": "#3b3e4a",
+    "whiteboardText": "#e9d5ff",
+    "whiteboardDim": "#8a8fa6",
+    "clockFace": "#2a2c35",
+    "clockHand": "#d8b4fe",
+    "clockSecond": "#ff2d3d",
+    "eomCard": "#1a1a21",
+    "eomPortrait": "sprites/eom_megatron.png"
+   },
+   "rugFilter": "none",
+   "desk": "sprites/desk_default.png",
+   "chair": "sprites/chair_default.png",
+   "monitor": "sprites/monitor_default.png",
+   "keyboard": "sprites/keyboard_default.png",
+   "elevatorFrame": "sprites/elevatorFrame_default.png",
+   "elevatorDoor": "sprites/elevatorDoor_default.png",
+   "wallTexture": "sprites/wallTexture_default.png",
+   "wallTrimTexture": "sprites/wallTrimTexture_default.png",
+   "agentPalette": [
+    "#7c3aed",
+    "#9ca3af",
+    "#6b7280",
+    "#a855f7",
+    "#dc2626",
+    "#0891b2",
+    "#4b5563",
+    "#c026d3"
+   ],
+   "agentStroke": "#d8b4fe",
+   "bossBody": "#2a2c35",
+   "agentAccessory": {
+    "file": "sprites/acc_default.png",
+    "w": 56,
+    "h": 48,
+    "x": -28,
+    "y": -56,
+    "replacesRefShades": true
+   },
+   "bossAccessory": {
+    "file": "sprites/accboss_default.png",
+    "w": 56,
+    "h": 48,
+    "x": -28,
+    "y": -56,
+    "replacesRefShades": true
+   },
+   "cleaner": {
+    "name": "Scrap-7",
+    "persona": "Squat maintenance drone that vacuums spilled energon and quietly dreams of conquest.",
+    "size": [
+     120,
+     108
+    ],
+    "anchor": "bottom-center",
+    "cell": 3,
+    "fx": "energon",
+    "fxColor": "#22e3ff",
+    "walk": [
+     "sprites/cl_default_walk0.png",
+     "sprites/cl_default_walk1.png",
+     "sprites/cl_default_walk2.png",
+     "sprites/cl_default_walk3.png"
+    ],
+    "clean": [
+     "sprites/cl_default_clean0.png",
+     "sprites/cl_default_clean1.png",
+     "sprites/cl_default_clean2.png",
+     "sprites/cl_default_clean3.png"
+    ],
+    "sit": [
+     "sprites/cl_default_sit0.png",
+     "sprites/cl_default_sit1.png"
+    ],
+    "seat": {
+     "sprite": "sprites/cl_default_seat.png",
+     "size": [
+      120,
+      108
+     ],
+     "anchor": "bottom-center"
+    },
+    "fps": {
+     "walk": 8,
+     "clean": 6,
+     "sit": 1.5
+    },
+    "move": "walk"
+   },
+   "propFx": {
+    "WaterCooler": {
+     "type": "glow",
+     "color": "#b44dff",
+     "area": [
+      6,
+      10,
+      28,
+      96
+     ],
+     "period": 3.2
+    },
+    "CoffeeMachine": {
+     "type": "float",
+     "area": [
+      8,
+      4,
+      44,
+      30
+     ],
+     "amp": 2,
+     "period": 2.6
+    },
+    "Plant": {
+     "type": "sway",
+     "origin": [
+      24,
+      62
+     ],
+     "deg": 2.5
+    },
+    "Printer": {
+     "type": "leds",
+     "color": "#b44dff",
+     "area": [
+      8,
+      6,
+      48,
+      10
+     ],
+     "n": 3
+    },
+    "CityWindow": {
+     "type": "anim",
+     "src": "anim/anim.json"
+    }
+   }
+  },
+  "coder": {
+   "label": "CODER LAB",
+   "wall": "#1d2527",
+   "wallTrim": "#16312c",
+   "floor": "#191f21",
+   "floorTile": "sprites/floor_coder.png",
+   "accent": "#39ff9c",
+   "props": {
+    "CityWindow": "sprites/coder_terminal.png",
+    "WaterCooler": "sprites/server_rack.png",
+    "CoffeeMachine": "sprites/neon_fridge.png",
+    "Plant": "sprites/cactus_led.png",
+    "Printer": "sprites/printer_3d.png",
+    "BossRug": "sprites/pcb_mat.png",
+    "EmployeeOfMonth": null,
+    "WallClock": null,
+    "Whiteboard": null,
+    "SafetySign": null
+   },
+   "deskItems": [
+    {
+     "file": "sprites/d_can.png",
+     "desks": [
+      1,
+      4
+     ]
+    },
+    {
+     "file": "sprites/d_rgbfan.png",
+     "desks": [
+      3,
+      6
+     ]
+    }
+   ],
+   "chrome": {
+    "eomFrame": "#2a8a6a",
+    "whiteboardHeader": "#0f2a24",
+    "safetySign": {
+     "bg": "#0b1a17",
+     "border": "#051210",
+     "header": "#11705a",
+     "text": "#39ff9c"
+    },
+    "clockRim": "#17332d",
+    "trimGlow": "#2ee6e6",
+    "whiteboardBg": "#0a1210",
+    "whiteboardBorder": "#1f3a30",
+    "whiteboardText": "#b8ffd8",
+    "whiteboardDim": "#5b8a74",
+    "clockFace": "#171e1f",
+    "clockHand": "#92ffc9",
+    "clockSecond": "#39ff9c",
+    "eomCard": "#191f21",
+    "eomPortrait": "sprites/eom_coder.png"
+   },
+   "rugFilter": "hue-rotate(150deg) saturate(.7) brightness(.8)",
+   "desk": "sprites/desk_coder.png",
+   "chair": "sprites/chair_coder.png",
+   "monitor": "sprites/monitor_coder.png",
+   "keyboard": "sprites/keyboard_coder.png",
+   "elevatorFrame": "sprites/elevatorFrame_coder.png",
+   "elevatorDoor": "sprites/elevatorDoor_coder.png",
+   "wallTexture": "sprites/wallTexture_coder.png",
+   "wallTrimTexture": "sprites/wallTrimTexture_coder.png",
+   "agentPalette": [
+    "#16a34a",
+    "#0d9488",
+    "#0891b2",
+    "#65a30d",
+    "#15803d",
+    "#0e7490",
+    "#4d7c0f",
+    "#047857"
+   ],
+   "agentStroke": "#86efac",
+   "bossBody": "#15191c",
+   "agentAccessory": {
+    "file": "sprites/acc_coder.png",
+    "w": 56,
+    "h": 48,
+    "x": -28,
+    "y": -56,
+    "replacesRefShades": true
+   },
+   "bossAccessory": {
+    "file": "sprites/accboss_coder.png",
+    "w": 56,
+    "h": 48,
+    "x": -28,
+    "y": -56,
+    "replacesRefShades": true
+   },
+   "cleaner": {
+    "name": "Byte-Vac",
+    "persona": "Low-profile robo-vacuum that moonlights as the lab's tidiest code reviewer.",
+    "size": [
+     120,
+     108
+    ],
+    "anchor": "bottom-center",
+    "cell": 3,
+    "fx": "pixels",
+    "fxColor": "#39ff9c",
+    "walk": [
+     "sprites/cl_coder_walk0.png",
+     "sprites/cl_coder_walk1.png",
+     "sprites/cl_coder_walk2.png",
+     "sprites/cl_coder_walk3.png"
+    ],
+    "clean": [
+     "sprites/cl_coder_clean0.png",
+     "sprites/cl_coder_clean1.png",
+     "sprites/cl_coder_clean2.png",
+     "sprites/cl_coder_clean3.png"
+    ],
+    "sit": [
+     "sprites/cl_coder_sit0.png",
+     "sprites/cl_coder_sit1.png"
+    ],
+    "seat": {
+     "sprite": "sprites/cl_coder_seat.png",
+     "size": [
+      120,
+      108
+     ],
+     "anchor": "bottom-center"
+    },
+    "fps": {
+     "walk": 8,
+     "clean": 6,
+     "sit": 1.5
+    },
+    "move": "roll"
+   },
+   "propFx": {
+    "WaterCooler": {
+     "type": "leds",
+     "color": "#22e3ff",
+     "area": [
+      6,
+      10,
+      28,
+      100
+     ],
+     "n": 8
+    },
+    "CoffeeMachine": {
+     "type": "flicker",
+     "color": "#ff4fd8",
+     "area": [
+      4,
+      4,
+      52,
+      58
+     ]
+    },
+    "Plant": {
+     "type": "pulse",
+     "color": "#39ff88",
+     "area": [
+      10,
+      4,
+      28,
+      40
+     ],
+     "period": 2.4
+    },
+    "Printer": {
+     "type": "leds",
+     "color": "#22e3ff",
+     "area": [
+      10,
+      8,
+      44,
+      8
+     ],
+     "n": 2
+    },
+    "CityWindow": {
+     "type": "anim",
+     "src": "anim/anim.json"
+    }
+   }
+  },
+  "designer": {
+   "label": "DESIGN STUDIO",
+   "wall": "#2a2530",
+   "wallTrim": "#3a2c3c",
+   "floor": "#222027",
+   "floorTile": "sprites/floor_designer.png",
+   "accent": "#f5a8c8",
+   "props": {
+    "CityWindow": "sprites/designer_swatches.png",
+    "WaterCooler": "sprites/easel.png",
+    "CoffeeMachine": "sprites/paint_cart.png",
+    "Plant": "sprites/flower_pastel.png",
+    "Printer": null,
+    "BossRug": null,
+    "EmployeeOfMonth": null,
+    "WallClock": null,
+    "Whiteboard": null,
+    "SafetySign": null
+   },
+   "deskItems": [
+    {
+     "file": "sprites/d_palette.png",
+     "desks": [
+      0,
+      6
+     ]
+    },
+    {
+     "file": "sprites/d_tablet.png",
+     "desks": [
+      2,
+      5
+     ]
+    }
+   ],
+   "chrome": {
+    "eomFrame": "#d9a3c3",
+    "whiteboardHeader": "#3a2c48",
+    "safetySign": {
+     "bg": "#2e2438",
+     "border": "#1e1726",
+     "header": "#b07ab0",
+     "text": "#ffd6f0"
+    },
+    "clockRim": "#3a2c48",
+    "trimGlow": "#bdb2ff",
+    "whiteboardBg": "#1f1a26",
+    "whiteboardBorder": "#5a4a68",
+    "whiteboardText": "#fbe3f0",
+    "whiteboardDim": "#9a8aa8",
+    "clockFace": "#221e26",
+    "clockHand": "#facfe1",
+    "clockSecond": "#f5a8c8",
+    "eomCard": "#241f29",
+    "eomPortrait": "sprites/eom_designer.png"
+   },
+   "rugFilter": "hue-rotate(290deg) saturate(.6)",
+   "desk": "sprites/desk_designer.png",
+   "chair": "sprites/chair_designer.png",
+   "monitor": "sprites/monitor_designer.png",
+   "keyboard": "sprites/keyboard_designer.png",
+   "elevatorFrame": "sprites/elevatorFrame_designer.png",
+   "elevatorDoor": "sprites/elevatorDoor_designer.png",
+   "wallTexture": "sprites/wallTexture_designer.png",
+   "wallTrimTexture": "sprites/wallTrimTexture_designer.png",
+   "agentPalette": [
+    "#ec4899",
+    "#a78bfa",
+    "#f472b6",
+    "#818cf8",
+    "#fb7185",
+    "#c084fc",
+    "#f9a8d4",
+    "#93c5fd"
+   ],
+   "agentStroke": "#fbcfe8",
+   "bossBody": "#3a2c48",
+   "agentAccessory": {
+    "file": "sprites/acc_designer.png",
+    "w": 56,
+    "h": 48,
+    "x": -28,
+    "y": -56,
+    "replacesRefShades": true
+   },
+   "bossAccessory": {
+    "file": "sprites/accboss_designer.png",
+    "w": 56,
+    "h": 48,
+    "x": -28,
+    "y": -56,
+    "replacesRefShades": true
+   },
+   "cleaner": {
+    "name": "Rolo Blotch",
+    "persona": "Studio muralist who waddles the halls touching up scuffs.",
+    "size": [
+     120,
+     132
+    ],
+    "anchor": "bottom-center",
+    "cell": 3,
+    "fx": "paint",
+    "fxColor": "#f5a8c8",
+    "walk": [
+     "sprites/cl_designer_walk0.png",
+     "sprites/cl_designer_walk1.png",
+     "sprites/cl_designer_walk2.png",
+     "sprites/cl_designer_walk3.png"
+    ],
+    "clean": [
+     "sprites/cl_designer_clean0.png",
+     "sprites/cl_designer_clean1.png",
+     "sprites/cl_designer_clean2.png",
+     "sprites/cl_designer_clean3.png"
+    ],
+    "sit": [
+     "sprites/cl_designer_sit0.png",
+     "sprites/cl_designer_sit1.png"
+    ],
+    "seat": {
+     "sprite": "sprites/cl_designer_seat.png",
+     "size": [
+      120,
+      108
+     ],
+     "anchor": "bottom-center"
+    },
+    "fps": {
+     "walk": 8,
+     "clean": 6,
+     "sit": 1.5
+    },
+    "move": "waddle"
+   },
+   "propFx": {
+    "WaterCooler": {
+     "type": "sway",
+     "origin": [
+      20,
+      124
+     ],
+     "deg": 1,
+     "area": [
+      6,
+      10,
+      28,
+      60
+     ]
+    },
+    "CoffeeMachine": {
+     "type": "pulse",
+     "color": "#ff5ea8",
+     "area": [
+      6,
+      6,
+      48,
+      22
+     ],
+     "period": 3
+    },
+    "Plant": {
+     "type": "sway",
+     "origin": [
+      24,
+      62
+     ],
+     "deg": 3
+    },
+    "Printer": null,
+    "CityWindow": {
+     "type": "anim",
+     "src": "anim/anim.json"
+    }
+   }
+  },
+  "content": {
+   "label": "WRITER ROOM",
+   "wall": "#2e2721",
+   "wallTrim": "#4a3522",
+   "floor": "#241f1b",
+   "floorTile": "sprites/floor_content.png",
+   "accent": "#e0a060",
+   "props": {
+    "CityWindow": "sprites/content_storyboard.png",
+    "WaterCooler": "sprites/tall_bookcase.png",
+    "CoffeeMachine": "sprites/typewriter_table.png",
+    "Plant": "sprites/paper_bin.png",
+    "Printer": null,
+    "BossRug": null,
+    "EmployeeOfMonth": null,
+    "WallClock": null,
+    "Whiteboard": null,
+    "SafetySign": null
+   },
+   "deskItems": [
+    {
+     "file": "sprites/d_notebook.png",
+     "desks": [
+      1,
+      7
+     ]
+    },
+    {
+     "file": "sprites/d_bookstack.png",
+     "desks": [
+      3,
+      4
+     ]
+    }
+   ],
+   "chrome": {
+    "eomFrame": "#8b5a2b",
+    "whiteboardHeader": "#4a3522",
+    "safetySign": {
+     "bg": "#3a2a1a",
+     "border": "#22180e",
+     "header": "#a8452f",
+     "text": "#f4d8a8"
+    },
+    "clockRim": "#4a3522",
+    "trimGlow": "#e0a060",
+    "whiteboardBg": "#1f1812",
+    "whiteboardBorder": "#6b4423",
+    "whiteboardText": "#f4e3c3",
+    "whiteboardDim": "#9a8466",
+    "clockFace": "#251f1a",
+    "clockHand": "#eecba8",
+    "clockSecond": "#e0a060",
+    "eomCard": "#27211c",
+    "eomPortrait": "sprites/eom_content.png"
+   },
+   "rugFilter": "hue-rotate(20deg) saturate(.8)",
+   "desk": "sprites/desk_content.png",
+   "chair": "sprites/chair_content.png",
+   "monitor": "sprites/monitor_content.png",
+   "keyboard": "sprites/keyboard_content.png",
+   "elevatorFrame": "sprites/elevatorFrame_content.png",
+   "elevatorDoor": "sprites/elevatorDoor_content.png",
+   "wallTexture": "sprites/wallTexture_content.png",
+   "wallTrimTexture": "sprites/wallTrimTexture_content.png",
+   "agentPalette": [
+    "#b45309",
+    "#a16207",
+    "#9a3412",
+    "#c2410c",
+    "#78716c",
+    "#b91c1c",
+    "#854d0e",
+    "#a8a29e"
+   ],
+   "agentStroke": "#fcd9a8",
+   "bossBody": "#3a2a1a",
+   "agentAccessory": {
+    "file": "sprites/acc_content.png",
+    "w": 56,
+    "h": 48,
+    "x": -28,
+    "y": -56,
+    "replacesRefShades": true
+   },
+   "bossAccessory": {
+    "file": "sprites/accboss_content.png",
+    "w": 56,
+    "h": 48,
+    "x": -28,
+    "y": -56,
+    "replacesRefShades": true
+   },
+   "cleaner": {
+    "name": "Inky",
+    "persona": "A vintage typewriter that scuttled to life and now proof-reads the floor.",
+    "size": [
+     120,
+     129
+    ],
+    "anchor": "bottom-center",
+    "cell": 3,
+    "fx": "paper",
+    "fxColor": "#f4ecd8",
+    "walk": [
+     "sprites/cl_content_walk0.png",
+     "sprites/cl_content_walk1.png",
+     "sprites/cl_content_walk2.png",
+     "sprites/cl_content_walk3.png"
+    ],
+    "clean": [
+     "sprites/cl_content_clean0.png",
+     "sprites/cl_content_clean1.png",
+     "sprites/cl_content_clean2.png",
+     "sprites/cl_content_clean3.png"
+    ],
+    "sit": [
+     "sprites/cl_content_sit0.png",
+     "sprites/cl_content_sit1.png"
+    ],
+    "seat": {
+     "sprite": "sprites/cl_content_seat.png",
+     "size": [
+      120,
+      108
+     ],
+     "anchor": "bottom-center"
+    },
+    "fps": {
+     "walk": 8,
+     "clean": 6,
+     "sit": 1.5
+    },
+    "move": "walk"
+   },
+   "propFx": {
+    "WaterCooler": {
+     "type": "glint",
+     "color": "#f4efe2",
+     "at": [
+      20,
+      30
+     ],
+     "period": 6
+    },
+    "CoffeeMachine": {
+     "type": "type",
+     "color": "#f4efe2",
+     "area": [
+      14,
+      14,
+      32,
+      12
+     ],
+     "period": 0.18
+    },
+    "Plant": {
+     "type": "paper",
+     "area": [
+      8,
+      0,
+      32,
+      20
+     ],
+     "period": 7
+    },
+    "Printer": null,
+    "CityWindow": {
+     "type": "anim",
+     "src": "anim/anim.json"
+    }
+   }
+  },
+  "video": {
+   "label": "PRODUCTION STUDIO",
+   "wall": "#251f30",
+   "wallTrim": "#3a2452",
+   "floor": "#1f1b27",
+   "floorTile": "sprites/floor_video.png",
+   "accent": "#b36bff",
+   "props": {
+    "CityWindow": "sprites/video_timeline.png",
+    "WaterCooler": "sprites/softbox.png",
+    "CoffeeMachine": "sprites/camera_tripod.png",
+    "Plant": "sprites/film_reels.png",
+    "Printer": null,
+    "BossRug": null,
+    "EmployeeOfMonth": null,
+    "WallClock": null,
+    "Whiteboard": null,
+    "SafetySign": null
+   },
+   "deskItems": [
+    {
+     "file": "sprites/d_clapper.png",
+     "desks": [
+      0,
+      5
+     ]
+    },
+    {
+     "file": "sprites/d_minicam.png",
+     "desks": [
+      2,
+      7
+     ]
+    }
+   ],
+   "chrome": {
+    "eomFrame": "#7a4ab0",
+    "whiteboardHeader": "#2a1a40",
+    "safetySign": {
+     "bg": "#22163a",
+     "border": "#140c24",
+     "header": "#8f4de0",
+     "text": "#e0c8ff"
+    },
+    "clockRim": "#2a1a40",
+    "trimGlow": "#c77dff",
+    "whiteboardBg": "#141019",
+    "whiteboardBorder": "#3a2452",
+    "whiteboardText": "#ead8ff",
+    "whiteboardDim": "#8a78a0",
+    "clockFace": "#1e1926",
+    "clockHand": "#d5aeff",
+    "clockSecond": "#b36bff",
+    "eomCard": "#1f1a29",
+    "eomPortrait": "sprites/eom_video.png"
+   },
+   "rugFilter": "hue-rotate(250deg) saturate(.8)",
+   "desk": "sprites/desk_video.png",
+   "chair": "sprites/chair_video.png",
+   "monitor": "sprites/monitor_video.png",
+   "keyboard": "sprites/keyboard_video.png",
+   "elevatorFrame": "sprites/elevatorFrame_video.png",
+   "elevatorDoor": "sprites/elevatorDoor_video.png",
+   "wallTexture": "sprites/wallTexture_video.png",
+   "wallTrimTexture": "sprites/wallTrimTexture_video.png",
+   "agentPalette": [
+    "#9333ea",
+    "#c026d3",
+    "#7c3aed",
+    "#db2777",
+    "#6d28d9",
+    "#a21caf",
+    "#be185d",
+    "#8b5cf6"
+   ],
+   "agentStroke": "#e9d5ff",
+   "bossBody": "#22163a",
+   "agentAccessory": {
+    "file": "sprites/acc_video.png",
+    "w": 56,
+    "h": 48,
+    "x": -28,
+    "y": -56,
+    "replacesRefShades": true
+   },
+   "bossAccessory": {
+    "file": "sprites/accboss_video.png",
+    "w": 56,
+    "h": 48,
+    "x": -28,
+    "y": -56,
+    "replacesRefShades": true
+   },
+   "cleaner": {
+    "name": "Grip",
+    "persona": "Autonomous gimbal drone that chases the shot and polishes its own lens.",
+    "size": [
+     120,
+     108
+    ],
+    "anchor": "bottom-center",
+    "cell": 3,
+    "fx": "sparkle",
+    "fxColor": "#d9b8ff",
+    "walk": [
+     "sprites/cl_video_walk0.png",
+     "sprites/cl_video_walk1.png",
+     "sprites/cl_video_walk2.png",
+     "sprites/cl_video_walk3.png"
+    ],
+    "clean": [
+     "sprites/cl_video_clean0.png",
+     "sprites/cl_video_clean1.png",
+     "sprites/cl_video_clean2.png",
+     "sprites/cl_video_clean3.png"
+    ],
+    "sit": [
+     "sprites/cl_video_sit0.png",
+     "sprites/cl_video_sit1.png"
+    ],
+    "seat": {
+     "sprite": "sprites/cl_video_seat.png",
+     "size": [
+      120,
+      108
+     ],
+     "anchor": "bottom-center"
+    },
+    "fps": {
+     "walk": 8,
+     "clean": 6,
+     "sit": 1.5
+    },
+    "move": "hover"
+   },
+   "propFx": {
+    "WaterCooler": {
+     "type": "pulse",
+     "color": "#fff6d6",
+     "area": [
+      2,
+      4,
+      36,
+      60
+     ],
+     "period": 3.5
+    },
+    "CoffeeMachine": {
+     "type": "leds",
+     "color": "#ff3344",
+     "at": [
+      40,
+      12
+     ],
+     "n": 1,
+     "period": 1.2
+    },
+    "Plant": {
+     "type": "spin",
+     "area": [
+      6,
+      6,
+      36,
+      36
+     ],
+     "period": 9
+    },
+    "Printer": null,
+    "CityWindow": {
+     "type": "anim",
+     "src": "anim/anim.json"
+    }
+   }
+  },
+  "analyst": {
+   "label": "DATA ROOM",
+   "wall": "#1f2634",
+   "wallTrim": "#1c3150",
+   "floor": "#1b2029",
+   "floorTile": "sprites/floor_analyst.png",
+   "accent": "#4da3ff",
+   "props": {
+    "CityWindow": "sprites/analyst_dashboard.png",
+    "WaterCooler": "sprites/data_totem.png",
+    "CoffeeMachine": "sprites/report_cabinet.png",
+    "Plant": null,
+    "Printer": null,
+    "BossRug": null,
+    "EmployeeOfMonth": null,
+    "WallClock": null,
+    "Whiteboard": null,
+    "SafetySign": null
+   },
+   "deskItems": [
+    {
+     "file": "sprites/d_calc.png",
+     "desks": [
+      1,
+      6
+     ]
+    },
+    {
+     "file": "sprites/d_minipie.png",
+     "desks": [
+      3,
+      4
+     ]
+    }
+   ],
+   "chrome": {
+    "eomFrame": "#3a6aa8",
+    "whiteboardHeader": "#12243c",
+    "safetySign": {
+     "bg": "#10203a",
+     "border": "#081224",
+     "header": "#2e6fd8",
+     "text": "#9fd0ff"
+    },
+    "clockRim": "#12243c",
+    "trimGlow": "#4da3ff",
+    "whiteboardBg": "#0b1220",
+    "whiteboardBorder": "#1c3150",
+    "whiteboardText": "#d6e8ff",
+    "whiteboardDim": "#6f8fb8",
+    "clockFace": "#191e2a",
+    "clockHand": "#9dccff",
+    "clockSecond": "#4da3ff",
+    "eomCard": "#1a202c",
+    "eomPortrait": "sprites/eom_analyst.png"
+   },
+   "rugFilter": "hue-rotate(210deg) saturate(.7)",
+   "desk": "sprites/desk_analyst.png",
+   "chair": "sprites/chair_analyst.png",
+   "monitor": "sprites/monitor_analyst.png",
+   "keyboard": "sprites/keyboard_analyst.png",
+   "elevatorFrame": "sprites/elevatorFrame_analyst.png",
+   "elevatorDoor": "sprites/elevatorDoor_analyst.png",
+   "wallTexture": "sprites/wallTexture_analyst.png",
+   "wallTrimTexture": "sprites/wallTrimTexture_analyst.png",
+   "agentPalette": [
+    "#2563eb",
+    "#0284c7",
+    "#3b82f6",
+    "#0ea5e9",
+    "#1d4ed8",
+    "#f59e0b",
+    "#6366f1",
+    "#0369a1"
+   ],
+   "agentStroke": "#bfdbfe",
+   "bossBody": "#12243c",
+   "agentAccessory": {
+    "file": "sprites/acc_analyst.png",
+    "w": 56,
+    "h": 48,
+    "x": -28,
+    "y": -56,
+    "replacesRefShades": true
+   },
+   "bossAccessory": {
+    "file": "sprites/accboss_analyst.png",
+    "w": 56,
+    "h": 48,
+    "x": -28,
+    "y": -56,
+    "replacesRefShades": true
+   },
+   "cleaner": {
+    "name": "Tally",
+    "persona": "An abacus-bot on a unicycle wheel that reconciles the aisles bead by bead.",
+    "size": [
+     120,
+     126
+    ],
+    "anchor": "bottom-center",
+    "cell": 3,
+    "fx": "pixels",
+    "fxColor": "#4da3ff",
+    "walk": [
+     "sprites/cl_analyst_walk0.png",
+     "sprites/cl_analyst_walk1.png",
+     "sprites/cl_analyst_walk2.png",
+     "sprites/cl_analyst_walk3.png"
+    ],
+    "clean": [
+     "sprites/cl_analyst_clean0.png",
+     "sprites/cl_analyst_clean1.png",
+     "sprites/cl_analyst_clean2.png",
+     "sprites/cl_analyst_clean3.png"
+    ],
+    "sit": [
+     "sprites/cl_analyst_sit0.png",
+     "sprites/cl_analyst_sit1.png"
+    ],
+    "seat": {
+     "sprite": "sprites/cl_analyst_seat.png",
+     "size": [
+      120,
+      108
+     ],
+     "anchor": "bottom-center"
+    },
+    "fps": {
+     "walk": 8,
+     "clean": 6,
+     "sit": 1.5
+    },
+    "move": "roll"
+   },
+   "propFx": {
+    "WaterCooler": {
+     "type": "scan",
+     "color": "#4fd1ff",
+     "area": [
+      6,
+      10,
+      28,
+      100
+     ],
+     "period": 3
+    },
+    "CoffeeMachine": {
+     "type": "leds",
+     "color": "#ffb020",
+     "area": [
+      8,
+      8,
+      44,
+      40
+     ],
+     "n": 3
+    },
+    "Plant": null,
+    "Printer": null,
+    "CityWindow": {
+     "type": "anim",
+     "src": "anim/anim.json"
+    }
+   }
+  },
+  "research": {
+   "label": "LIBRARY",
+   "wall": "#1f2a22",
+   "wallTrim": "#3a2c1c",
+   "floor": "#1c211d",
+   "floorTile": "sprites/floor_research.png",
+   "accent": "#c9a55a",
+   "props": {
+    "CityWindow": "sprites/research_library.png",
+    "WaterCooler": "sprites/floor_globe.png",
+    "CoffeeMachine": "sprites/microscope_table.png",
+    "Plant": "sprites/fern_big.png",
+    "Printer": null,
+    "BossRug": null,
+    "EmployeeOfMonth": null,
+    "WallClock": null,
+    "Whiteboard": null,
+    "SafetySign": null
+   },
+   "deskItems": [
+    {
+     "file": "sprites/d_openbook.png",
+     "desks": [
+      0,
+      6
+     ]
+    },
+    {
+     "file": "sprites/d_magnifier.png",
+     "desks": [
+      2,
+      5
+     ]
+    }
+   ],
+   "chrome": {
+    "eomFrame": "#6b4a30",
+    "whiteboardHeader": "#1f3a28",
+    "safetySign": {
+     "bg": "#1a3322",
+     "border": "#0c1f12",
+     "header": "#2f5d3a",
+     "text": "#e8d9a8"
+    },
+    "clockRim": "#3a2c1c",
+    "trimGlow": "#c9a55a",
+    "whiteboardBg": "#141c15",
+    "whiteboardBorder": "#3a2c1c",
+    "whiteboardText": "#ecdfb8",
+    "whiteboardDim": "#8a8a6a",
+    "clockFace": "#19221b",
+    "clockHand": "#e1cea4",
+    "clockSecond": "#c9a55a",
+    "eomCard": "#1a241d",
+    "eomPortrait": "sprites/eom_research.png"
+   },
+   "rugFilter": "hue-rotate(110deg) saturate(.55) brightness(.85)",
+   "desk": "sprites/desk_research.png",
+   "chair": "sprites/chair_research.png",
+   "monitor": "sprites/monitor_research.png",
+   "keyboard": "sprites/keyboard_research.png",
+   "elevatorFrame": "sprites/elevatorFrame_research.png",
+   "elevatorDoor": "sprites/elevatorDoor_research.png",
+   "wallTexture": "sprites/wallTexture_research.png",
+   "wallTrimTexture": "sprites/wallTrimTexture_research.png",
+   "agentPalette": [
+    "#15803d",
+    "#a16207",
+    "#166534",
+    "#b45309",
+    "#4d7c0f",
+    "#92400e",
+    "#3f6212",
+    "#78716c"
+   ],
+   "agentStroke": "#e8d9a8",
+   "bossBody": "#1f3a28",
+   "agentAccessory": {
+    "file": "sprites/acc_research.png",
+    "w": 56,
+    "h": 48,
+    "x": -28,
+    "y": -56,
+    "replacesRefShades": true
+   },
+   "bossAccessory": {
+    "file": "sprites/accboss_research.png",
+    "w": 56,
+    "h": 48,
+    "x": -28,
+    "y": -56,
+    "replacesRefShades": true
+   },
+   "cleaner": {
+    "name": "Old Marginalia",
+    "persona": "Ancient archivist who has shushed every desk on this floor twice.",
+    "size": [
+     120,
+     123
+    ],
+    "anchor": "bottom-center",
+    "cell": 3,
+    "fx": "dust",
+    "fxColor": "#c9a55a",
+    "walk": [
+     "sprites/cl_research_walk0.png",
+     "sprites/cl_research_walk1.png",
+     "sprites/cl_research_walk2.png",
+     "sprites/cl_research_walk3.png"
+    ],
+    "clean": [
+     "sprites/cl_research_clean0.png",
+     "sprites/cl_research_clean1.png",
+     "sprites/cl_research_clean2.png",
+     "sprites/cl_research_clean3.png"
+    ],
+    "sit": [
+     "sprites/cl_research_sit0.png",
+     "sprites/cl_research_sit1.png"
+    ],
+    "seat": {
+     "sprite": "sprites/cl_research_seat.png",
+     "size": [
+      120,
+      108
+     ],
+     "anchor": "bottom-center"
+    },
+    "fps": {
+     "walk": 8,
+     "clean": 6,
+     "sit": 1.5
+    },
+    "move": "shuffle"
+   },
+   "propFx": {
+    "WaterCooler": {
+     "type": "spin",
+     "area": [
+      4,
+      8,
+      32,
+      40
+     ],
+     "period": 12
+    },
+    "CoffeeMachine": {
+     "type": "glint",
+     "color": "#fff3b0",
+     "at": [
+      30,
+      14
+     ],
+     "period": 5
+    },
+    "Plant": {
+     "type": "sway",
+     "origin": [
+      24,
+      62
+     ],
+     "deg": 3
+    },
+    "Printer": null,
+    "CityWindow": {
+     "type": "anim",
+     "src": "anim/anim.json"
+    }
+   }
+  },
+  "qa": {
+   "label": "QA LAB",
+   "wall": "#26262a",
+   "wallTrim": "#2e2a2a",
+   "floor": "#1f1f22",
+   "floorTile": "sprites/floor_qa.png",
+   "accent": "#e5484d",
+   "props": {
+    "CityWindow": "sprites/qa_bugboard.png",
+    "WaterCooler": "sprites/test_rig.png",
+    "CoffeeMachine": "sprites/test_bench.png",
+    "Plant": "sprites/bonsai_check.png",
+    "Printer": null,
+    "BossRug": null,
+    "EmployeeOfMonth": null,
+    "WallClock": null,
+    "Whiteboard": null,
+    "SafetySign": null
+   },
+   "deskItems": [
+    {
+     "file": "sprites/d_bugjar.png",
+     "desks": [
+      1,
+      4
+     ]
+    },
+    {
+     "file": "sprites/d_clipboard.png",
+     "desks": [
+      3,
+      6
+     ]
+    }
+   ],
+   "chrome": {
+    "eomFrame": "#6a6f76",
+    "whiteboardHeader": "#2a1c1c",
+    "safetySign": {
+     "bg": "#1a3a22",
+     "border": "#0d2414",
+     "header": "#e5484d",
+     "text": "#3ecf6e"
+    },
+    "clockRim": "#2a2a2e",
+    "trimGlow": "#e5484d",
+    "whiteboardBg": "#161617",
+    "whiteboardBorder": "#3a3f45",
+    "whiteboardText": "#f2f2f2",
+    "whiteboardDim": "#8a9098",
+    "clockFace": "#1e1e22",
+    "clockHand": "#f19a9d",
+    "clockSecond": "#e5484d",
+    "eomCard": "#202024",
+    "eomPortrait": "sprites/eom_qa.png"
+   },
+   "rugFilter": "hue-rotate(0deg) saturate(.7)",
+   "desk": "sprites/desk_qa.png",
+   "chair": "sprites/chair_qa.png",
+   "monitor": "sprites/monitor_qa.png",
+   "keyboard": "sprites/keyboard_qa.png",
+   "elevatorFrame": "sprites/elevatorFrame_qa.png",
+   "elevatorDoor": "sprites/elevatorDoor_qa.png",
+   "wallTexture": "sprites/wallTexture_qa.png",
+   "wallTrimTexture": "sprites/wallTrimTexture_qa.png",
+   "agentPalette": [
+    "#dc2626",
+    "#16a34a",
+    "#e11d48",
+    "#15803d",
+    "#b91c1c",
+    "#059669",
+    "#9f1239",
+    "#4d7c0f"
+   ],
+   "agentStroke": "#fecaca",
+   "bossBody": "#2a2a2e",
+   "agentAccessory": {
+    "file": "sprites/acc_qa.png",
+    "w": 56,
+    "h": 48,
+    "x": -28,
+    "y": -56,
+    "replacesRefShades": true
+   },
+   "bossAccessory": {
+    "file": "sprites/accboss_qa.png",
+    "w": 56,
+    "h": 48,
+    "x": -28,
+    "y": -56,
+    "replacesRefShades": true
+   },
+   "cleaner": {
+    "name": "Sterile Sam",
+    "persona": "Hovering cleanroom pod that disinfects every keyboard between builds.",
+    "size": [
+     120,
+     108
+    ],
+    "anchor": "bottom-center",
+    "cell": 3,
+    "fx": "mist",
+    "fxColor": "#b8ffcf",
+    "walk": [
+     "sprites/cl_qa_walk0.png",
+     "sprites/cl_qa_walk1.png",
+     "sprites/cl_qa_walk2.png",
+     "sprites/cl_qa_walk3.png"
+    ],
+    "clean": [
+     "sprites/cl_qa_clean0.png",
+     "sprites/cl_qa_clean1.png",
+     "sprites/cl_qa_clean2.png",
+     "sprites/cl_qa_clean3.png"
+    ],
+    "sit": [
+     "sprites/cl_qa_sit0.png",
+     "sprites/cl_qa_sit1.png"
+    ],
+    "seat": {
+     "sprite": "sprites/cl_qa_seat.png",
+     "size": [
+      120,
+      108
+     ],
+     "anchor": "bottom-center"
+    },
+    "fps": {
+     "walk": 8,
+     "clean": 6,
+     "sit": 1.5
+    },
+    "move": "hover"
+   },
+   "propFx": {
+    "WaterCooler": {
+     "type": "flicker",
+     "color": "#39ff88",
+     "alt": "#ff4d4d",
+     "area": [
+      6,
+      14,
+      28,
+      24
+     ],
+     "period": 2.5
+    },
+    "CoffeeMachine": {
+     "type": "leds",
+     "color": "#39ff88",
+     "area": [
+      6,
+      6,
+      48,
+      10
+     ],
+     "n": 3
+    },
+    "Plant": {
+     "type": "sway",
+     "origin": [
+      24,
+      62
+     ],
+     "deg": 2
+    },
+    "Printer": null,
+    "CityWindow": {
+     "type": "anim",
+     "src": "anim/anim.json"
+    }
+   }
+  },
+  "ops": {
+   "label": "NOC",
+   "wall": "#28231f",
+   "wallTrim": "#4a2e14",
+   "floor": "#211e1b",
+   "floorTile": "sprites/floor_ops.png",
+   "accent": "#ff8a1f",
+   "props": {
+    "CityWindow": "sprites/ops_noc.png",
+    "WaterCooler": "sprites/noc_rack.png",
+    "CoffeeMachine": "sprites/alarm_console.png",
+    "Plant": "sprites/extinguisher.png",
+    "Printer": null,
+    "BossRug": null,
+    "EmployeeOfMonth": null,
+    "WallClock": null,
+    "Whiteboard": null,
+    "SafetySign": null
+   },
+   "deskItems": [
+    {
+     "file": "sprites/d_walkie.png",
+     "desks": [
+      0,
+      7
+     ]
+    },
+    {
+     "file": "sprites/d_beacon.png",
+     "desks": [
+      2,
+      5
+     ]
+    }
+   ],
+   "chrome": {
+    "eomFrame": "#8a5a2a",
+    "whiteboardHeader": "#3a2410",
+    "safetySign": {
+     "bg": "#2a1c10",
+     "border": "#1a1008",
+     "header": "#ff8a1f",
+     "text": "#ffd0a0"
+    },
+    "clockRim": "#3a2410",
+    "trimGlow": "#ff8a1f",
+    "whiteboardBg": "#161310",
+    "whiteboardBorder": "#4a2e14",
+    "whiteboardText": "#ffe3c8",
+    "whiteboardDim": "#9a8470",
+    "clockFace": "#201c19",
+    "clockHand": "#ffbf84",
+    "clockSecond": "#ff8a1f",
+    "eomCard": "#221e1a",
+    "eomPortrait": "sprites/eom_ops.png"
+   },
+   "rugFilter": "hue-rotate(30deg) saturate(.9)",
+   "desk": "sprites/desk_ops.png",
+   "chair": "sprites/chair_ops.png",
+   "monitor": "sprites/monitor_ops.png",
+   "keyboard": "sprites/keyboard_ops.png",
+   "elevatorFrame": "sprites/elevatorFrame_ops.png",
+   "elevatorDoor": "sprites/elevatorDoor_ops.png",
+   "wallTexture": "sprites/wallTexture_ops.png",
+   "wallTrimTexture": "sprites/wallTrimTexture_ops.png",
+   "agentPalette": [
+    "#ea580c",
+    "#d97706",
+    "#c2410c",
+    "#ca8a04",
+    "#b45309",
+    "#dc2626",
+    "#9a3412",
+    "#a16207"
+   ],
+   "agentStroke": "#fed7aa",
+   "bossBody": "#3a2410",
+   "agentAccessory": {
+    "file": "sprites/acc_ops.png",
+    "w": 56,
+    "h": 48,
+    "x": -28,
+    "y": -56,
+    "replacesRefShades": true
+   },
+   "bossAccessory": {
+    "file": "sprites/accboss_ops.png",
+    "w": 56,
+    "h": 48,
+    "x": -28,
+    "y": -56,
+    "replacesRefShades": true
+   },
+   "cleaner": {
+    "name": "Gus",
+    "persona": "NOC infra tech who muscles the parts cart around and keeps the server room spotless.",
+    "size": [
+     120,
+     126
+    ],
+    "anchor": "bottom-center",
+    "cell": 3,
+    "fx": "oil",
+    "fxColor": "#8a5a1f",
+    "walk": [
+     "sprites/cl_ops_walk0.png",
+     "sprites/cl_ops_walk1.png",
+     "sprites/cl_ops_walk2.png",
+     "sprites/cl_ops_walk3.png"
+    ],
+    "clean": [
+     "sprites/cl_ops_clean0.png",
+     "sprites/cl_ops_clean1.png",
+     "sprites/cl_ops_clean2.png",
+     "sprites/cl_ops_clean3.png"
+    ],
+    "sit": [
+     "sprites/cl_ops_sit0.png",
+     "sprites/cl_ops_sit1.png"
+    ],
+    "seat": {
+     "sprite": "sprites/cl_ops_seat.png",
+     "size": [
+      120,
+      108
+     ],
+     "anchor": "bottom-center"
+    },
+    "fps": {
+     "walk": 8,
+     "clean": 6,
+     "sit": 1.5
+    },
+    "move": "roll"
+   },
+   "propFx": {
+    "WaterCooler": {
+     "type": "leds",
+     "color": "#39ff88",
+     "alt": "#ffb020",
+     "area": [
+      6,
+      10,
+      28,
+      100
+     ],
+     "n": 10
+    },
+    "CoffeeMachine": {
+     "type": "spin",
+     "color": "#ff3344",
+     "at": [
+      30,
+      6
+     ],
+     "period": 1.4,
+     "beam": true
+    },
+    "Plant": null,
+    "Printer": null,
+    "CityWindow": {
+     "type": "anim",
+     "src": "anim/anim.json"
+    }
+   }
+  },
+  "pm": {
+   "label": "WAR ROOM",
+   "wall": "#1c2929",
+   "wallTrim": "#163a37",
+   "floor": "#1a2222",
+   "floorTile": "sprites/floor_pm.png",
+   "accent": "#2ec4b6",
+   "props": {
+    "CityWindow": "sprites/pm_kanban.png",
+    "WaterCooler": "sprites/flip_chart.png",
+    "CoffeeMachine": "sprites/wall_calendar.png",
+    "Plant": null,
+    "Printer": null,
+    "BossRug": null,
+    "EmployeeOfMonth": null,
+    "WallClock": null,
+    "Whiteboard": null,
+    "SafetySign": null
+   },
+   "deskItems": [
+    {
+     "file": "sprites/d_sticky.png",
+     "desks": [
+      1,
+      6
+     ]
+    },
+    {
+     "file": "sprites/d_hourglass.png",
+     "desks": [
+      3,
+      4
+     ]
+    }
+   ],
+   "chrome": {
+    "eomFrame": "#2a8a82",
+    "whiteboardHeader": "#10302e",
+    "safetySign": {
+     "bg": "#0f2a28",
+     "border": "#061a18",
+     "header": "#1a8a80",
+     "text": "#bff5ef"
+    },
+    "clockRim": "#10302e",
+    "trimGlow": "#2ec4b6",
+    "whiteboardBg": "#0e1818",
+    "whiteboardBorder": "#1f4a47",
+    "whiteboardText": "#d6fffa",
+    "whiteboardDim": "#6a9a96",
+    "clockFace": "#162121",
+    "clockHand": "#8cdfd7",
+    "clockSecond": "#2ec4b6",
+    "eomCard": "#182323",
+    "eomPortrait": "sprites/eom_pm.png"
+   },
+   "rugFilter": "hue-rotate(170deg) saturate(.6)",
+   "desk": "sprites/desk_pm.png",
+   "chair": "sprites/chair_pm.png",
+   "monitor": "sprites/monitor_pm.png",
+   "keyboard": "sprites/keyboard_pm.png",
+   "elevatorFrame": "sprites/elevatorFrame_pm.png",
+   "elevatorDoor": "sprites/elevatorDoor_pm.png",
+   "wallTexture": "sprites/wallTexture_pm.png",
+   "wallTrimTexture": "sprites/wallTrimTexture_pm.png",
+   "agentPalette": [
+    "#0d9488",
+    "#0891b2",
+    "#14b8a6",
+    "#0e7490",
+    "#059669",
+    "#eab308",
+    "#0f766e",
+    "#06b6d4"
+   ],
+   "agentStroke": "#99f6e4",
+   "bossBody": "#10302e",
+   "agentAccessory": {
+    "file": "sprites/acc_pm.png",
+    "w": 56,
+    "h": 48,
+    "x": -28,
+    "y": -56,
+    "replacesRefShades": true
+   },
+   "bossAccessory": {
+    "file": "sprites/accboss_pm.png",
+    "w": 56,
+    "h": 48,
+    "x": -28,
+    "y": -56,
+    "replacesRefShades": true
+   },
+   "cleaner": {
+    "name": "Tempo",
+    "persona": "Roller-skating PM who glides the floor clean between stand-ups.",
+    "size": [
+     120,
+     129
+    ],
+    "anchor": "bottom-center",
+    "cell": 3,
+    "fx": "sparkle",
+    "fxColor": "#2ec4b6",
+    "walk": [
+     "sprites/cl_pm_walk0.png",
+     "sprites/cl_pm_walk1.png",
+     "sprites/cl_pm_walk2.png",
+     "sprites/cl_pm_walk3.png"
+    ],
+    "clean": [
+     "sprites/cl_pm_clean0.png",
+     "sprites/cl_pm_clean1.png",
+     "sprites/cl_pm_clean2.png",
+     "sprites/cl_pm_clean3.png"
+    ],
+    "sit": [
+     "sprites/cl_pm_sit0.png",
+     "sprites/cl_pm_sit1.png"
+    ],
+    "seat": {
+     "sprite": "sprites/cl_pm_seat.png",
+     "size": [
+      120,
+      108
+     ],
+     "anchor": "bottom-center"
+    },
+    "fps": {
+     "walk": 8,
+     "clean": 6,
+     "sit": 1.5
+    },
+    "move": "glide"
+   },
+   "propFx": {
+    "WaterCooler": {
+     "type": "flip",
+     "area": [
+      2,
+      6,
+      36,
+      50
+     ],
+     "period": 11
+    },
+    "CoffeeMachine": {
+     "type": "flip",
+     "area": [
+      6,
+      10,
+      48,
+      40
+     ],
+     "period": 17
+    },
+    "Plant": null,
+    "Printer": null,
+    "CityWindow": {
+     "type": "anim",
+     "src": "anim/anim.json"
+    }
+   }
+  },
+  "growth": {
+   "label": "GROWTH DESK",
+   "wall": "#232820",
+   "wallTrim": "#34401c",
+   "floor": "#1e221b",
+   "floorTile": "sprites/floor_growth.png",
+   "accent": "#a3e635",
+   "props": {
+    "CityWindow": "sprites/growth_chart.png",
+    "WaterCooler": "sprites/growth_kiosk.png",
+    "CoffeeMachine": "sprites/trophy_shelf.png",
+    "Plant": "sprites/money_sprout.png",
+    "Printer": null,
+    "BossRug": null,
+    "EmployeeOfMonth": null,
+    "WallClock": null,
+    "Whiteboard": null,
+    "SafetySign": null
+   },
+   "deskItems": [
+    {
+     "file": "sprites/d_megaphone.png",
+     "desks": [
+      0,
+      5
+     ]
+    },
+    {
+     "file": "sprites/d_rocket.png",
+     "desks": [
+      2,
+      7
+     ]
+    }
+   ],
+   "chrome": {
+    "eomFrame": "#6a8a2a",
+    "whiteboardHeader": "#243016",
+    "safetySign": {
+     "bg": "#1f2a14",
+     "border": "#10180a",
+     "header": "#5f8a1c",
+     "text": "#e9ffb8"
+    },
+    "clockRim": "#243016",
+    "trimGlow": "#a3e635",
+    "whiteboardBg": "#12160e",
+    "whiteboardBorder": "#34401c",
+    "whiteboardText": "#efffd0",
+    "whiteboardDim": "#8a9a6a",
+    "clockFace": "#1c201a",
+    "clockHand": "#ccf190",
+    "clockSecond": "#a3e635",
+    "eomCard": "#1e221b",
+    "eomPortrait": "sprites/eom_growth.png"
+   },
+   "rugFilter": "hue-rotate(90deg) saturate(.7) brightness(.9)",
+   "desk": "sprites/desk_growth.png",
+   "chair": "sprites/chair_growth.png",
+   "monitor": "sprites/monitor_growth.png",
+   "keyboard": "sprites/keyboard_growth.png",
+   "elevatorFrame": "sprites/elevatorFrame_growth.png",
+   "elevatorDoor": "sprites/elevatorDoor_growth.png",
+   "wallTexture": "sprites/wallTexture_growth.png",
+   "wallTrimTexture": "sprites/wallTrimTexture_growth.png",
+   "agentPalette": [
+    "#65a30d",
+    "#4d7c0f",
+    "#84cc16",
+    "#15803d",
+    "#a16207",
+    "#3f6212",
+    "#16a34a",
+    "#ca8a04"
+   ],
+   "agentStroke": "#d9f99d",
+   "bossBody": "#243016",
+   "agentAccessory": {
+    "file": "sprites/acc_growth.png",
+    "w": 56,
+    "h": 48,
+    "x": -28,
+    "y": -56,
+    "replacesRefShades": true
+   },
+   "bossAccessory": {
+    "file": "sprites/accboss_growth.png",
+    "w": 56,
+    "h": 48,
+    "x": -28,
+    "y": -56,
+    "replacesRefShades": true
+   },
+   "cleaner": {
+    "name": "Sprout",
+    "persona": "Potted cactus that hops the desk rows and waters every lead itself.",
+    "size": [
+     120,
+     108
+    ],
+    "anchor": "bottom-center",
+    "cell": 3,
+    "fx": "leaves",
+    "fxColor": "#a3e635",
+    "walk": [
+     "sprites/cl_growth_walk0.png",
+     "sprites/cl_growth_walk1.png",
+     "sprites/cl_growth_walk2.png",
+     "sprites/cl_growth_walk3.png"
+    ],
+    "clean": [
+     "sprites/cl_growth_clean0.png",
+     "sprites/cl_growth_clean1.png",
+     "sprites/cl_growth_clean2.png",
+     "sprites/cl_growth_clean3.png"
+    ],
+    "sit": [
+     "sprites/cl_growth_sit0.png",
+     "sprites/cl_growth_sit1.png"
+    ],
+    "seat": {
+     "sprite": "sprites/cl_growth_seat.png",
+     "size": [
+      120,
+      108
+     ],
+     "anchor": "bottom-center"
+    },
+    "fps": {
+     "walk": 8,
+     "clean": 6,
+     "sit": 1.5
+    },
+    "move": "hop"
+   },
+   "propFx": {
+    "WaterCooler": {
+     "type": "count",
+     "color": "#39ff88",
+     "area": [
+      6,
+      14,
+      28,
+      20
+     ],
+     "period": 1.5
+    },
+    "CoffeeMachine": {
+     "type": "glint",
+     "color": "#ffd84d",
+     "area": [
+      4,
+      4,
+      52,
+      58
+     ],
+     "period": 4.5
+    },
+    "Plant": {
+     "type": "leds",
+     "color": "#ffd84d",
+     "area": [
+      8,
+      6,
+      32,
+      30
+     ],
+     "n": 3,
+     "period": 2
+    },
+    "Printer": null,
+    "CityWindow": {
+     "type": "anim",
+     "src": "anim/anim.json"
+    }
+   }
+  }
+ },
+ "cleanerRef": {
+  "name": "Joe the Janitor",
+  "persona": "Old-school janitor who has mopped every floor of this tower twice.",
+  "size": [
+   120,
+   108
+  ],
+  "anchor": "bottom-center",
+  "cell": 3,
+  "fx": "bubbles",
+  "fxColor": "#bfe6ff",
+  "walk": [
+   "sprites/cl_ref_walk0.png",
+   "sprites/cl_ref_walk1.png",
+   "sprites/cl_ref_walk2.png",
+   "sprites/cl_ref_walk3.png"
+  ],
+  "clean": [
+   "sprites/cl_ref_clean0.png",
+   "sprites/cl_ref_clean1.png",
+   "sprites/cl_ref_clean2.png",
+   "sprites/cl_ref_clean3.png"
+  ],
+  "sit": [
+   "sprites/cl_ref_sit0.png",
+   "sprites/cl_ref_sit1.png"
+  ],
+  "seat": {
+   "sprite": "sprites/cl_ref_seat.png",
+   "size": [
+    120,
+    108
+   ],
+   "anchor": "bottom-center"
+  },
+  "fps": {
+   "walk": 8,
+   "clean": 6,
+   "sit": 1.5
+  },
+  "move": "walk"
+ },
+ "propFxRef": {
+  "WaterCooler": {
+   "type": "bubbles"
+  },
+  "CoffeeMachine": {
+   "type": "steam"
+  },
+  "Printer": {
+   "type": "paper"
+  },
+  "Plant": {
+   "type": "sway",
+   "deg": 2
+  }
+ }
+}

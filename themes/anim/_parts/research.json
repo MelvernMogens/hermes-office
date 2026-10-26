@@ -1,0 +1,36 @@
+{
+ "panel": {
+  "frames": [
+   "anim/research_panel_0.png",
+   "anim/research_panel_1.png",
+   "anim/research_panel_2.png",
+   "anim/research_panel_3.png",
+   "anim/research_panel_4.png",
+   "anim/research_panel_5.png",
+   "anim/research_panel_6.png",
+   "anim/research_panel_7.png",
+   "anim/research_panel_8.png",
+   "anim/research_panel_9.png"
+  ],
+  "fps": 6,
+  "pingpong": false
+ },
+ "eom": {
+  "frames": [
+   "anim/research_eom_0.png",
+   "anim/research_eom_1.png",
+   "anim/research_eom_2.png",
+   "anim/research_eom_3.png",
+   "anim/research_eom_4.png",
+   "anim/research_eom_5.png",
+   "anim/research_eom_6.png",
+   "anim/research_eom_7.png",
+   "anim/research_eom_8.png",
+   "anim/research_eom_9.png",
+   "anim/research_eom_10.png"
+  ],
+  "fps": 5,
+  "idleHoldMs": 300
+ },
+ "note": "library: open book on shelf 2 page-turns across (crease sweeps right->left, ribbon sways) under a sweeping brass lamp glow; portrait EOM v2: hand enters from the bottom edge and rises to stroke the beard while the head tilts down/turns, then the OTHER hand raises a book into frame at reading height, blink, static brass-glasses lighting (no glint sweep)"
+}

@@ -1,0 +1,759 @@
+diff --git a/apps/shared/src/gateway-contract.generated.ts b/apps/shared/src/gateway-contract.generated.ts
+index e3b1baa0f9..51c89695c2 100644
+--- a/apps/shared/src/gateway-contract.generated.ts
++++ b/apps/shared/src/gateway-contract.generated.ts
+@@ -2604,6 +2604,47 @@ export interface SessionListRow {
+   message_count?: number
+   source?: string
+ }
++export interface SessionChildrenParams {
++  profile?: string | null
++  since?: number | null
++  limit?: number | null
++}
++export interface SessionChildrenResult {
++  children: SessionChildRow[]
++}
++/** ``SessionDB.list_child_sessions``: one sub-agent run; ``ended_at`` null while it runs. */
++export interface SessionChildRow {
++  id: string
++  parent_session_id: string
++  source?: string
++  title?: string | null
++  started_at?: number
++  ended_at?: number | null
++  end_reason?: string | null
++  message_count?: number
++  last_active?: number
++}
++export interface SessionActivityParams {
++  profile?: string | null
++  since?: number | null
++  limit?: number | null
++}
++export interface SessionActivityResult {
++  activity: SessionActivityRow[]
++}
++/** ``SessionDB.list_active_tool_calls``: a session's latest tool-calling message. */
++export interface SessionActivityRow {
++  session_id: string
++  parent_session_id?: string | null
++  source?: string
++  ended_at?: number | null
++  timestamp?: number
++  tools: SessionActivityTool[]
++}
++export interface SessionActivityTool {
++  name: string
++  arguments?: string
++}
+ export interface SessionMostRecentParams {
+   profile?: string | null
+ }
+@@ -4454,8 +4495,12 @@ export interface RpcMethods {
+   'session.activate': { params: SessionActivateParams; result: SessionActivateResult }
+   /** Live sessions in this process, insertion order (not a DB browser). */
+   'session.active_list': { params: SessionActiveListParams; result: SessionActiveListResult }
++  /** A profile's most recent tool calls per active session (root and sub-agent); read-only, for office/roster 'what is it doing' views. */
++  'session.activity': { params: SessionActivityParams; result: SessionActivityResult }
+   /** Fork a live session into a new stored child that shares the parent's history so far. */
+   'session.branch': { params: SessionBranchParams; result: SessionBranchResult }
++  /** A profile's sub-agent runs that are live (activity inside ``since``) or ended inside ``since``; read-only, for office/roster views. Conversation listings keep hiding them. */
++  'session.children': { params: SessionChildrenParams; result: SessionChildrenResult }
+   /** Tear down a live session (its stored row stays resumable). */
+   'session.close': { params: SessionCloseParams; result: SessionCloseResult }
+   /** Manual /compress of an idle session, optionally focused on a topic. */
+@@ -4744,7 +4789,9 @@ export const RPC_METHODS = [
+   'rollback.restore',
+   'session.activate',
+   'session.active_list',
++  'session.activity',
+   'session.branch',
++  'session.children',
+   'session.close',
+   'session.compress',
+   'session.context_breakdown',
+diff --git a/apps/shared/src/gateway-contract.openrpc.json b/apps/shared/src/gateway-contract.openrpc.json
+index 76bad2cddc..dbc26ebe34 100644
+--- a/apps/shared/src/gateway-contract.openrpc.json
++++ b/apps/shared/src/gateway-contract.openrpc.json
+@@ -2652,6 +2652,24 @@
+         }
+       }
+     },
++    {
++      "name": "session.activity",
++      "summary": "A profile's most recent tool calls per active session (root and sub-agent); read-only, for office/roster 'what is it doing' views.",
++      "params": [
++        {
++          "name": "params",
++          "schema": {
++            "$ref": "#/components/schemas/SessionActivityParams"
++          }
++        }
++      ],
++      "result": {
++        "name": "result",
++        "schema": {
++          "$ref": "#/components/schemas/SessionActivityResult"
++        }
++      }
++    },
+     {
+       "name": "session.branch",
+       "summary": "Fork a live session into a new stored child that shares the parent's history so far.",
+@@ -2670,6 +2688,24 @@
+         }
+       }
+     },
++    {
++      "name": "session.children",
++      "summary": "A profile's sub-agent runs that are live (activity inside ``since``) or ended inside ``since``; read-only, for office/roster views. Conversation listings keep hiding them.",
++      "params": [
++        {
++          "name": "params",
++          "schema": {
++            "$ref": "#/components/schemas/SessionChildrenParams"
++          }
++        }
++      ],
++      "result": {
++        "name": "result",
++        "schema": {
++          "$ref": "#/components/schemas/SessionChildrenResult"
++        }
++      }
++    },
+     {
+       "name": "session.close",
+       "summary": "Tear down a live session (its stored row stays resumable).",
+@@ -24054,6 +24090,142 @@
+         "title": "SessionActiveListResult",
+         "type": "object"
+       },
++      "SessionActivityParams": {
++        "additionalProperties": false,
++        "properties": {
++          "profile": {
++            "anyOf": [
++              {
++                "type": "string"
++              },
++              {
++                "type": "null"
++              }
++            ],
++            "default": null,
++            "title": "Profile"
++          },
++          "since": {
++            "anyOf": [
++              {
++                "type": "integer"
++              },
++              {
++                "type": "null"
++              }
++            ],
++            "default": null,
++            "title": "Since"
++          },
++          "limit": {
++            "anyOf": [
++              {
++                "type": "integer"
++              },
++              {
++                "type": "null"
++              }
++            ],
++            "default": null,
++            "title": "Limit"
++          }
++        },
++        "title": "SessionActivityParams",
++        "type": "object"
++      },
++      "SessionActivityResult": {
++        "additionalProperties": false,
++        "properties": {
++          "activity": {
++            "items": {
++              "$ref": "#/components/schemas/SessionActivityRow"
++            },
++            "title": "Activity",
++            "type": "array"
++          }
++        },
++        "required": [
++          "activity"
++        ],
++        "title": "SessionActivityResult",
++        "type": "object"
++      },
++      "SessionActivityRow": {
++        "additionalProperties": false,
++        "description": "``SessionDB.list_active_tool_calls``: a session's latest tool-calling message.",
++        "properties": {
++          "session_id": {
++            "title": "Session Id",
++            "type": "string"
++          },
++          "parent_session_id": {
++            "anyOf": [
++              {
++                "type": "string"
++              },
++              {
++                "type": "null"
++              }
++            ],
++            "default": null,
++            "title": "Parent Session Id"
++          },
++          "source": {
++            "default": "",
++            "title": "Source",
++            "type": "string"
++          },
++          "ended_at": {
++            "anyOf": [
++              {
++                "type": "number"
++              },
++              {
++                "type": "null"
++              }
++            ],
++            "default": null,
++            "title": "Ended At"
++          },
++          "timestamp": {
++            "default": 0,
++            "title": "Timestamp",
++            "type": "number"
++          },
++          "tools": {
++            "items": {
++              "$ref": "#/components/schemas/SessionActivityTool"
++            },
++            "title": "Tools",
++            "type": "array"
++          }
++        },
++        "required": [
++          "session_id",
++          "tools"
++        ],
++        "title": "SessionActivityRow",
++        "type": "object"
++      },
++      "SessionActivityTool": {
++        "additionalProperties": false,
++        "properties": {
++          "name": {
++            "title": "Name",
++            "type": "string"
++          },
++          "arguments": {
++            "default": "",
++            "title": "Arguments",
++            "type": "string"
++          }
++        },
++        "required": [
++          "name"
++        ],
++        "title": "SessionActivityTool",
++        "type": "object"
++      },
+       "SessionBranchParams": {
+         "additionalProperties": false,
+         "properties": {
+@@ -24150,6 +24322,142 @@
+         "title": "SessionBranchResult",
+         "type": "object"
+       },
++      "SessionChildRow": {
++        "additionalProperties": false,
++        "description": "``SessionDB.list_child_sessions``: one sub-agent run; ``ended_at`` null while it runs.",
++        "properties": {
++          "id": {
++            "title": "Id",
++            "type": "string"
++          },
++          "parent_session_id": {
++            "title": "Parent Session Id",
++            "type": "string"
++          },
++          "source": {
++            "default": "",
++            "title": "Source",
++            "type": "string"
++          },
++          "title": {
++            "anyOf": [
++              {
++                "type": "string"
++              },
++              {
++                "type": "null"
++              }
++            ],
++            "default": null,
++            "title": "Title"
++          },
++          "started_at": {
++            "default": 0,
++            "title": "Started At",
++            "type": "number"
++          },
++          "ended_at": {
++            "anyOf": [
++              {
++                "type": "number"
++              },
++              {
++                "type": "null"
++              }
++            ],
++            "default": null,
++            "title": "Ended At"
++          },
++          "end_reason": {
++            "anyOf": [
++              {
++                "type": "string"
++              },
++              {
++                "type": "null"
++              }
++            ],
++            "default": null,
++            "title": "End Reason"
++          },
++          "message_count": {
++            "default": 0,
++            "title": "Message Count",
++            "type": "integer"
++          },
++          "last_active": {
++            "default": 0,
++            "title": "Last Active",
++            "type": "number"
++          }
++        },
++        "required": [
++          "id",
++          "parent_session_id"
++        ],
++        "title": "SessionChildRow",
++        "type": "object"
++      },
++      "SessionChildrenParams": {
++        "additionalProperties": false,
++        "properties": {
++          "profile": {
++            "anyOf": [
++              {
++                "type": "string"
++              },
++              {
++                "type": "null"
++              }
++            ],
++            "default": null,
++            "title": "Profile"
++          },
++          "since": {
++            "anyOf": [
++              {
++                "type": "integer"
++              },
++              {
++                "type": "null"
++              }
++            ],
++            "default": null,
++            "title": "Since"
++          },
++          "limit": {
++            "anyOf": [
++              {
++                "type": "integer"
++              },
++              {
++                "type": "null"
++              }
++            ],
++            "default": null,
++            "title": "Limit"
++          }
++        },
++        "title": "SessionChildrenParams",
++        "type": "object"
++      },
++      "SessionChildrenResult": {
++        "additionalProperties": false,
++        "properties": {
++          "children": {
++            "items": {
++              "$ref": "#/components/schemas/SessionChildRow"
++            },
++            "title": "Children",
++            "type": "array"
++          }
++        },
++        "required": [
++          "children"
++        ],
++        "title": "SessionChildrenResult",
++        "type": "object"
++      },
+       "SessionCloseParams": {
+         "additionalProperties": false,
+         "properties": {
+diff --git a/hermes_state_sessions.py b/hermes_state_sessions.py
+index cfd7811fdf..d5002d4d3c 100644
+--- a/hermes_state_sessions.py
++++ b/hermes_state_sessions.py
+@@ -14,7 +14,7 @@ from agent.session_activity import (
+     ActivityProvenance, bound_activity_description, normalize_activity_provenance,
+ )
+ from hermes_state_common import (
+-    _LISTABLE_CHILD_SQL, _PREVIEW_ELIGIBLE_SQL, _PREVIEW_RAW_SELECT, _RECOVERABLE_END_REASONS,
++    _ephemeral_child_sql, _LISTABLE_CHILD_SQL, _PREVIEW_ELIGIBLE_SQL, _PREVIEW_RAW_SELECT, _RECOVERABLE_END_REASONS,
+     _RECOVERABLE_END_REASONS_SQL, _RESET_END_REASONS, _legacy_reset_child_sql, _shape_preview,
+     _sql_json_extract, _sql_session_last_active, _sql_session_last_active_by_id, escape_like as _escape_like,
+     _SQL_IN_CHUNK, _id_chunks, _placeholders as _session_ids_placeholders,
+@@ -1398,6 +1398,52 @@ class SessionSessionsMixin:
+         )
+         return self._read_one(f"SELECT COUNT(*) FROM sessions s{_where_sql(where_clauses, ' ')}", params)[0]
+ 
++    def list_child_sessions(self, since: float, limit: int = 50) -> List[Dict[str, Any]]:
++        """Sub-agent runs (never branch / reset / compression continuations) that are live or ended within
++        ``since`` seconds. Live = ``ended_at`` NULL AND last activity inside the window, so a child whose
++        process died without closing its row is not reported as running forever."""
++        cutoff = time.time() - max(0.0, float(since))
++        last_active = _sql_session_last_active("s")
++        rows = self._read_all(
++            f"SELECT s.id, s.parent_session_id, s.source, s.title, s.started_at, s.ended_at, s.end_reason,"
++            f" s.message_count, {last_active} AS last_active FROM sessions s"
++            f" WHERE {_ephemeral_child_sql('s')}"
++            f" AND ((s.ended_at IS NULL AND {last_active} >= ?) OR s.ended_at >= ?)"
++            " ORDER BY s.started_at DESC LIMIT ?",
++            (cutoff, cutoff, max(1, int(limit))))
++        return [dict(row) for row in rows]
++
++    def list_active_tool_calls(self, since: float, limit: int = 20) -> List[Dict[str, Any]]:
++        """Newest assistant tool calls (name + raw JSON arguments) across ALL sessions of this profile whose
++        activity is inside ``since`` seconds -- the office view's "what is this bot doing right now" bubble.
++        One row per session (its latest tool-calling message), newest first. Read-only."""
++        cutoff = time.time() - max(0.0, float(since))
++        rows = self._read_all(
++            "SELECT m.session_id, m.tool_calls, m.timestamp, s.parent_session_id, s.source, s.ended_at"
++            " FROM messages m JOIN sessions s ON s.id = m.session_id"
++            " WHERE m.role = 'assistant' AND m.tool_calls IS NOT NULL AND m.timestamp >= ?"
++            " AND m.id = (SELECT MAX(m2.id) FROM messages m2 WHERE m2.session_id = m.session_id"
++            "            AND m2.role = 'assistant' AND m2.tool_calls IS NOT NULL)"
++            " ORDER BY m.timestamp DESC LIMIT ?",
++            (cutoff, max(1, int(limit))))
++        out: List[Dict[str, Any]] = []
++        for row in rows:
++            try:
++                calls = json.loads(row["tool_calls"] or "[]")
++            except (TypeError, ValueError):
++                continue
++            tools = []
++            for c in calls if isinstance(calls, list) else []:
++                fn = c.get("function") if isinstance(c, dict) else None
++                if isinstance(fn, dict) and fn.get("name"):
++                    args = fn.get("arguments")
++                    tools.append({"name": str(fn["name"]), "arguments": args if isinstance(args, str) else json.dumps(args or {})})
++            if tools:
++                out.append({"session_id": row["session_id"], "parent_session_id": row["parent_session_id"],
++                            "source": row["source"] or "", "ended_at": row["ended_at"], "timestamp": row["timestamp"],
++                            "tools": tools})
++        return out
++
+     def session_count_ge(self, n: int = 1) -> bool:
+         """At least N sessions exist (archived included); LIMIT short-circuits session_count()'s scan."""
+         return len(self._read_all("SELECT 1 FROM sessions LIMIT ?", (n,))) >= n
+diff --git a/tests/tui_gateway/test_session_activity.py b/tests/tui_gateway/test_session_activity.py
+new file mode 100644
+index 0000000000..637131f8de
+--- /dev/null
++++ b/tests/tui_gateway/test_session_activity.py
+@@ -0,0 +1,67 @@
++"""Tests: session.activity — a profile's latest tool call per active session, for office/roster views.
++
++Why: the office pane shows a "what is this bot doing" bubble for every bot. Tool events stream only to the
++process that runs the turn, so for bots running in another process the desktop had no way to learn the
++current tool. session.activity reads the owning profile's state.db read-only.
++
++Contract under test:
++- one row per session = that session's NEWEST tool-calling assistant message (older calls never win);
++- sessions whose latest tool call is older than ``since`` are absent;
++- sub-agent sessions are included and carry their parent_session_id;
++- tool name + raw JSON arguments survive the round trip.
++"""
++
++from __future__ import annotations
++
++import json
++import time
++from pathlib import Path
++
++import pytest
++
++import tui_gateway.server as srv
++
++
++@pytest.fixture
++def home(tmp_path, monkeypatch):
++    h = tmp_path / ".hermes"
++    worker = h / "profiles" / "worker"
++    worker.mkdir(parents=True)
++    monkeypatch.setattr(Path, "home", lambda: tmp_path)
++    monkeypatch.setenv("HERMES_HOME", str(h))
++    return worker
++
++
++def _call(name, args):
++    return [{"id": "c", "type": "function", "function": {"name": name, "arguments": json.dumps(args)}}]
++
++
++def _seed(home):
++    from hermes_state import SessionDB
++
++    now = time.time()
++    db = SessionDB(db_path=home / "state.db")
++    db.create_session("root", "tool")
++    db.append_message("root", "assistant", "", tool_calls=_call("read_file", {"path": "/a"}), timestamp=now - 20)
++    db.append_message("root", "assistant", "", tool_calls=_call("terminal", {"command": "ls -la"}), timestamp=now - 10)
++    db.create_session("kid", "tool", parent_session_id="root")
++    db.append_message("kid", "assistant", "", tool_calls=_call("web_search", {"query": "x"}), timestamp=now - 5)
++    db.create_session("old", "tool")
++    db.append_message("old", "assistant", "", tool_calls=_call("terminal", {"command": "stale"}), timestamp=now - 7200)
++    db.close()
++
++
++def _activity(params):
++    envelope = srv._methods["session.activity"](1, params)
++    assert "error" not in envelope, envelope
++    return {r["session_id"]: r for r in envelope["result"]["activity"]}
++
++
++def test_latest_call_per_session_and_window(home):
++    _seed(home)
++    rows = _activity({"profile": "worker", "since": 600})
++    assert set(rows) == {"root", "kid"}
++    root_tools = rows["root"]["tools"]
++    assert [t["name"] for t in root_tools] == ["terminal"]
++    assert json.loads(root_tools[0]["arguments"]) == {"command": "ls -la"}
++    assert rows["kid"]["parent_session_id"] == "root"
+diff --git a/tests/tui_gateway/test_session_children.py b/tests/tui_gateway/test_session_children.py
+new file mode 100644
+index 0000000000..dd362b4df9
+--- /dev/null
++++ b/tests/tui_gateway/test_session_children.py
+@@ -0,0 +1,95 @@
++"""Tests: session.children — a profile's live sub-agent runs for office/roster views.
++
++Why: every listing surface (session.list, profiles.list, /api/profiles/sessions) hides sub-agent
++children on purpose, and subagent.list only sees the calling process's in-memory registry, so a
++desktop view could never show another profile's running sub-agents. session.children reads the
++owning profile's state.db read-only.
++
++Contract under test:
++- running = ended_at NULL AND last activity inside ``since``; an orphan (never closed, silent for
++  hours) is NOT reported, and a child ended inside the window IS reported with its ended_at.
++- compression continuations (parent ended with end_reason='compression') are never children;
++  roots never appear.
++- session.list keeps hiding sub-agent children (the new surface does not leak into listings).
++"""
++
++from __future__ import annotations
++
++import time
++from pathlib import Path
++
++import pytest
++
++import tui_gateway.server as srv
++
++
++@pytest.fixture
++def home(tmp_path, monkeypatch):
++    """A FOREIGN profile ``worker`` (the office reads other bots' stores through ``profile``)."""
++    h = tmp_path / ".hermes"
++    worker = h / "profiles" / "worker"
++    worker.mkdir(parents=True)
++    monkeypatch.setattr(Path, "home", lambda: tmp_path)
++    monkeypatch.setenv("HERMES_HOME", str(h))
++    return worker
++
++
++def _seed(home):
++    from hermes_state import SessionDB
++
++    now = time.time()
++    db = SessionDB(db_path=home / "state.db")
++    db.create_session("root", "desktop")
++    db.append_message("root", "user", "delegate some work", timestamp=now - 30)
++    rows = {
++        # id: (parent, started_at, ended_at, end_reason, last message ts)
++        "child-live": ("root", now - 60, None, None, now - 5),
++        "child-orphan": ("root", now - 90000, None, None, now - 86000),
++        "child-done": ("root", now - 300, now - 20, "agent_close", now - 20),
++        "child-old-done": ("root", now - 9000, now - 8000, "agent_close", now - 8000),
++    }
++    for sid, (parent, started, ended, reason, msg_ts) in rows.items():
++        db.create_session(sid, "desktop", parent_session_id=parent)
++        db.append_message(sid, "assistant", f"work {sid}", timestamp=msg_ts)
++        with db._lock:
++            db._conn.execute("UPDATE sessions SET started_at = ?, ended_at = ?, end_reason = ? WHERE id = ?",
++                             (started, ended, reason, sid))
++    # compression chain: parent ended by compression -> continuation carries parent_session_id
++    db.create_session("chat-a", "desktop")
++    db.append_message("chat-a", "user", "long chat", timestamp=now - 50)
++    db.create_session("chat-a-cont", "desktop", parent_session_id="chat-a")
++    db.append_message("chat-a-cont", "assistant", "continued", timestamp=now - 2)
++    with db._lock:
++        db._conn.execute("UPDATE sessions SET ended_at = ?, end_reason = 'compression' WHERE id = 'chat-a'",
++                         (now - 40,))
++        db._conn.execute("UPDATE sessions SET started_at = ? WHERE id = 'chat-a-cont'", (now - 39,))
++    db.close()
++
++
++def _children(params):
++    envelope = srv._methods["session.children"](1, params)
++    assert "error" not in envelope, envelope
++    return {c["id"]: c for c in envelope["result"]["children"]}
++
++
++def test_children_reports_live_and_recently_ended_but_not_orphans_or_compression(home):
++    _seed(home)
++
++    kids = _children({"profile": "worker", "since": 600})
++
++    assert set(kids) == {"child-live", "child-done"}
++    assert kids["child-live"]["ended_at"] is None
++    assert kids["child-live"]["parent_session_id"] == "root"
++    assert time.time() - kids["child-live"]["last_active"] < 600
++    assert kids["child-done"]["ended_at"] is not None
++    assert kids["child-done"]["end_reason"] == "agent_close"
++
++
++def test_session_list_still_hides_subagent_children(home):
++    _seed(home)
++
++    listed = {r["id"] for r in srv._methods["session.list"](1, {"profile": "worker", "limit": 50})["result"]["sessions"]}
++    reported = set(_children({"profile": "worker", "since": 600}))
++
++    assert reported and listed  # both surfaces read the same store
++    assert not (listed & reported)
+diff --git a/tui_gateway/contracts/sessions.py b/tui_gateway/contracts/sessions.py
+index 9687b77ce6..22dd73c68a 100644
+--- a/tui_gateway/contracts/sessions.py
++++ b/tui_gateway/contracts/sessions.py
+@@ -208,6 +208,64 @@ method("session.list", params=SessionListParams, result=SessionListResult,
+        doc="Human-facing stored sessions, most recent first (sub-agent / kanban sources denied).")
+ 
+ 
++class SessionChildrenParams(ProfileParams):
++    since: int | None = None  # seconds; default 600, capped at 86400
++    limit: int | None = None  # default 50, capped at 200
++
++
++class SessionChildRow(Result):
++    """``SessionDB.list_child_sessions``: one sub-agent run; ``ended_at`` null while it runs."""
++
++    id: str
++    parent_session_id: str
++    source: str = ""
++    title: str | None = None
++    started_at: float = 0
++    ended_at: float | None = None
++    end_reason: str | None = None
++    message_count: int = 0
++    last_active: float = 0
++
++
++class SessionChildrenResult(Result):
++    children: list[SessionChildRow]
++
++
++method("session.children", params=SessionChildrenParams, result=SessionChildrenResult,
++       doc="A profile's sub-agent runs that are live (activity inside ``since``) or ended inside ``since``; "
++           "read-only, for office/roster views. Conversation listings keep hiding them.")
++
++
++class SessionActivityParams(ProfileParams):
++    since: int | None = None  # seconds; default 120, capped at 3600
++    limit: int | None = None  # default 20, capped at 100
++
++
++class SessionActivityTool(Result):
++    name: str
++    arguments: str = ""  # raw JSON string as stored; clients summarize + redact for display
++
++
++class SessionActivityRow(Result):
++    """``SessionDB.list_active_tool_calls``: a session's latest tool-calling message."""
++
++    session_id: str
++    parent_session_id: str | None = None
++    source: str = ""
++    ended_at: float | None = None
++    timestamp: float = 0
++    tools: list[SessionActivityTool]
++
++
++class SessionActivityResult(Result):
++    activity: list[SessionActivityRow]
++
++
++method("session.activity", params=SessionActivityParams, result=SessionActivityResult,
++       doc="A profile's most recent tool calls per active session (root and sub-agent); read-only, "
++           "for office/roster 'what is it doing' views.")
++
++
+ class SessionMostRecentParams(ProfileParams):
+     pass
+ 
+diff --git a/tui_gateway/methods_session.py b/tui_gateway/methods_session.py
+index d111623a89..3d3fafb14c 100644
+--- a/tui_gateway/methods_session.py
++++ b/tui_gateway/methods_session.py
+@@ -449,6 +449,30 @@ def _(rid, params: dict, db) -> dict:
+         return _err(rid, 5006, str(e))
+ 
+ 
++@method("session.children")
++@_with_db(5007, session_scoped=False)
++def _(rid, params: dict, db) -> dict:
++    """Live / just-ended sub-agent runs of ``params['profile']`` (read-only handle for a foreign profile)."""
++    try:
++        since = max(0, min(_int_param(params, "since", 600), 86400))
++        limit = max(1, min(_int_param(params, "limit", 50), 200))
++        return _ok(rid, {"children": db.list_child_sessions(since, limit)})
++    except Exception as e:
++        return _err(rid, 5007, str(e))
++
++
++@method("session.activity")
++@_with_db(5008, session_scoped=False)
++def _(rid, params: dict, db) -> dict:
++    """Latest tool call per recently active session of ``params['profile']`` (read-only foreign handle)."""
++    try:
++        since = max(0, min(_int_param(params, "since", 120), 3600))
++        limit = max(1, min(_int_param(params, "limit", 20), 100))
++        return _ok(rid, {"activity": db.list_active_tool_calls(since, limit)})
++    except Exception as e:
++        return _err(rid, 5008, str(e))
++
++
+ @method("session.most_recent")
+ def _(rid, params: dict) -> dict:
+     """Most recent human-facing session (session.list deny-list); errors fold into ``session_id: null``."""

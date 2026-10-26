@@ -1,0 +1,37 @@
+{
+ "panel": {
+  "frames": [
+   "anim/ops_panel_0.png",
+   "anim/ops_panel_1.png",
+   "anim/ops_panel_2.png",
+   "anim/ops_panel_3.png",
+   "anim/ops_panel_4.png",
+   "anim/ops_panel_5.png",
+   "anim/ops_panel_6.png",
+   "anim/ops_panel_7.png",
+   "anim/ops_panel_8.png",
+   "anim/ops_panel_9.png"
+  ],
+  "fps": 6,
+  "pingpong": false
+ },
+ "eom": {
+  "frames": [
+   "anim/ops_eom_0.png",
+   "anim/ops_eom_1.png",
+   "anim/ops_eom_2.png",
+   "anim/ops_eom_3.png",
+   "anim/ops_eom_4.png",
+   "anim/ops_eom_5.png",
+   "anim/ops_eom_6.png",
+   "anim/ops_eom_7.png",
+   "anim/ops_eom_8.png",
+   "anim/ops_eom_9.png",
+   "anim/ops_eom_10.png",
+   "anim/ops_eom_11.png"
+  ],
+  "fps": 6,
+  "idleHoldMs": 300
+ },
+ "note": "network ring: a bright ping pulse travels node-to-node around the ring each loop; the alert node turns from red to green as the ping reaches it (resets at wrap); CPU/NET/MEM sparklines scroll left continuously. portrait: head turns to check the side (4px) then nods (3px), a big thumbs-up hand rises into frame and pumps, then a hand reaches up and tips the hard hat; beacon blinks, blink."
+}
