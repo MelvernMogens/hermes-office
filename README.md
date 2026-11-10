@@ -1,6 +1,8 @@
-# hermes-office
+# Hermes Office
 
-A pixel-art office building for the [Hermes](https://github.com/NousResearch/hermes-agent) desktop app. Each of your agent profiles gets its own floor, and everything on screen is driven by real gateway data.
+**A pixel-art office building for the [Hermes](https://github.com/NousResearch/hermes-agent) desktop app: one floor per agent profile, with live subagents and tool calls.**
+
+Each of your agent profiles gets its own floor, and everything on screen is driven by real gateway data. It's a single-file Hermes Desktop plugin with no build step.
 
 <p align="center"><img src="docs/screenshot.png" width="520" alt="Two floors of the office: the default agent at its command desk handing a task to a subagent, and the coder floor"></p>
 
@@ -17,6 +19,12 @@ A pixel-art office building for the [Hermes](https://github.com/NousResearch/her
   - a TODO / LAST SESSION board.
 - **Ambient life that invents no agents.** A cleaner robot wanders each floor, and the wall panels animate. Neither is counted or clickable.
 - **Click an agent to open its chat.** The session opens in a new tab beside your current chat.
+- **Floor themes** matched to the profile: Mech Base (default), Coder Lab, Design Studio, Writer Room, Production Studio, QA Lab, each with its own cleaner robot and animated props.
+
+## Requirements
+
+- Hermes Desktop with plugin support (plugins load from `~/.hermes/desktop-plugins/`).
+- Optional: a git checkout of hermes-agent (default `~/.hermes/hermes-agent`) for the core patch below.
 
 ## Install
 
@@ -94,6 +102,15 @@ The output lands in `themes/sprites/` and `themes/themes.json`. `plugin.js` is t
 
 See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
+## Updating
+
+```bash
+git -C ~/.hermes/desktop-plugins/hermes-office pull
+bash ~/.hermes/desktop-plugins/hermes-office/core-patch/reapply.sh   # after every `hermes update`, if you use the patch
+```
+
 ## License
 
 [MIT](LICENSE). This is a personal project and is not affiliated with Nous Research. The "Megatron" floor theme is an original design: no Hasbro / Transformers logos or artwork are reproduced.
+
+Built by [Melvern Mogens](https://github.com/MelvernMogens).
